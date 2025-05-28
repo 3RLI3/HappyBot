@@ -200,7 +200,7 @@ async def on_startup(application):
 
 def main():
     # Launch Flask health server in background
-    port = int(os.getenv("PORT", 8000))
+    port = int(os.getenv("PORT", 10000))
     threading.Thread(
         target=lambda: health_app.run(host="0.0.0.0", port=port),
         daemon=True
