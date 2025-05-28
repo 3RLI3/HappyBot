@@ -4,8 +4,6 @@ import os
 import threading
 import logging
 import tempfile
-from telegram.ext import ApplicationBuilder
-
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect
 from telegram import Update
@@ -200,12 +198,12 @@ async def on_startup(application):
     await application.bot.delete_webhook(drop_pending_updates=True)
 
 def main():
-    # # 1) Start your Flask health server as before…
-    # port = int(os.getenv("PORT", 10000))
-    # threading.Thread(
-    #     target=lambda: health_app.run(host="0.0.0.0", port=port),
-    #     daemon=True
-    # ).start()
+    # 1) Start your Flask health server as before…
+    port = int(os.getenv("PORT", 10000))
+    threading.Thread(
+        target=lambda: health_app.run(host="0.0.0.0", port=port),
+        daemon=True
+    ).start()
 
     # 2) Build the Telegram application, registering the startup hook
     app = (
@@ -217,10 +215,6 @@ def main():
 
     # 3) Add your command / message handlers…
     app.add_handler(CommandHandler("start", start_command))
-    # … all other handlers …
-
-    # 4) Finally, start polling and drop any stale updates
-    app.run_polling(drop_pending_updates=True)
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("checkin", checkin_command))
     app.add_handler(CommandHandler("sticker", send_sticker))
