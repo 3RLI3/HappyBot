@@ -194,21 +194,33 @@ async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 # === Main Entry ===
+
 async def on_startup(application):
-    # 1. Clear any webhook and pending updates
+    # Remove any webhook and purge queued updates in one call
     await application.bot.delete_webhook(drop_pending_updates=True)
 
 def main():
-    # Launch Flask health server in background
+    # 1) Start your Flask health server as before…
     port = int(os.getenv("PORT", 10000))
     threading.Thread(
         target=lambda: health_app.run(host="0.0.0.0", port=port),
         daemon=True
     ).start()
 
-    # Build Telegram application
-    app = ApplicationBuilder().token(TOKEN).build()
+    # 2) Build the Telegram application, registering the startup hook
+    app = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .post_init(on_startup)   # this will run before polling
+        .build()
+    )
+
+    # 3) Add your command / message handlers…
     app.add_handler(CommandHandler("start", start_command))
+    # … all other handlers …
+
+    # 4) Finally, start polling and drop any stale updates
+    app.run_polling(drop_pending_updates=True)
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("checkin", checkin_command))
     app.add_handler(CommandHandler("sticker", send_sticker))
