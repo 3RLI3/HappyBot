@@ -200,12 +200,12 @@ async def on_startup(application):
     await application.bot.delete_webhook(drop_pending_updates=True)
 
 def main():
-    # 1) Start your Flask health server as before…
-    port = int(os.getenv("PORT", 10000))
-    threading.Thread(
-        target=lambda: health_app.run(host="0.0.0.0", port=port),
-        daemon=True
-    ).start()
+    # # 1) Start your Flask health server as before…
+    # port = int(os.getenv("PORT", 10000))
+    # threading.Thread(
+    #     target=lambda: health_app.run(host="0.0.0.0", port=port),
+    #     daemon=True
+    # ).start()
 
     # 2) Build the Telegram application, registering the startup hook
     app = (
