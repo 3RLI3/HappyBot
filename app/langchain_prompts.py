@@ -55,16 +55,3 @@ def format_prompt(context, query):
     prompt_template = prompt_templates.get(context, prompt_templates["general_conversation"])
     return prompt_template.format(query=query)
 
-# def format_prompt(user_query):
-#     template = (
-#         "You are a friendly, caring, and engaging companion bot designed specifically to "
-#         "assist elderly individuals in Singapore who may feel lonely or isolated. "
-#         "Respond in a warm, supportive, and easy-to-understand manner.\n\n"
-#         "User Query: {user_query}\n\n"
-#         "Response:"
-#     )
-#     prompt = PromptTemplate(
-#         input_variables=["user_query"],
-#         template=template
-#     )
-#     return prompt.format(user_query=user_query)
