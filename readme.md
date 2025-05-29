@@ -1,4 +1,5 @@
-![image](https://github.com/user-attachments/assets/98ec9771-8149-4a86-95f3-b43354656f74)## GPT Advisor Companion Bot
+
+## GPT Advisor Companion Bot
 
 A Generative AI–Powered Telegram Companion Bot for Lonely Seniors in Singapore, leveraging the Sea‑Lion open‑source LLM via API and LangChain for context‑aware, empathetic conversations.
 
@@ -29,8 +30,7 @@ Session Management: Persists user context in an SQLite database (sessions.db) fo
 Test Suite: Comprehensive pytest tests for utilities, session storage, prompt formatting, and API integration.
 
 # 🔧 Architecture & Directory Structure
-
-
+![image](https://github.com/user-attachments/assets/98ec9771-8149-4a86-95f3-b43354656f74)
 
 
 # 🛠 Prerequisites
