@@ -1,4 +1,4 @@
-## GPT Advisor Companion Bot
+![image](https://github.com/user-attachments/assets/98ec9771-8149-4a86-95f3-b43354656f74)## GPT Advisor Companion Bot
 
 A Generative AI–Powered Telegram Companion Bot for Lonely Seniors in Singapore, leveraging the Sea‑Lion open‑source LLM via API and LangChain for context‑aware, empathetic conversations.
 
@@ -30,26 +30,8 @@ Test Suite: Comprehensive pytest tests for utilities, session storage, prompt fo
 
 # 🔧 Architecture & Directory Structure
 
-project_root/
-├── app/
-│   ├── __init__.py            # Package initializer
-│   ├── telegram_bot.py        # Entry point and message handler
-│   ├── sea_lion_api.py        # Sea‑Lion API wrapper
-│   ├── langchain_prompts.py   # Contextual PromptTemplate definitions
-│   ├── utils.py               # Context detection utilities
-│   └── session_db.py          # SQLite session management
-│
-├── tests/                     # pytest test modules
-│   ├── __init__.py
-│   ├── test_utils.py
-│   ├── test_session_db.py
-│   ├── test_langchain_prompts.py
-│   └── test_sea_lion_api.py
-│
-├── models/                    # (Optional) local Sea‑Lion model files
-├── .env                       # Environment variables (Telegram & API keys)
-├── requirements.txt           # Python dependencies
-└── README.md                  # This documentation
+
+
 
 # 🛠 Prerequisites
 
