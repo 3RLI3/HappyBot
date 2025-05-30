@@ -1,0 +1,11 @@
+openai>=1.82.0
+flask>=2.0.0
+redis>=4.0.0
+python-telegram-bot>=20.0
+langchain>=0.0.1
+python-dotenv>=1.0.0
+requests>=2.0.0
+gtts>=2.3.1
+pydub>=0.25.1
+SpeechRecognition>=3.8.1
+pocketsphinx>=0.1.15
