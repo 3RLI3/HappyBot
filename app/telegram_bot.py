@@ -287,10 +287,11 @@ if not app.error_handlers:
 # ── Entrypoint ─────────────────────────────────────────────────
 if __name__ == "__main__":
     # app, not application
+    logging.info("🚀 HappyBot starting...")
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
         url_path="/telegram",
-        webhook_url=f"{WEBHOOK_URL}/telegram",
+        webhook_url=f"{WEBHOOK_URL}",
         drop_pending_updates=True,
     )
