@@ -56,7 +56,7 @@ def serve_miniapp(filename):
 def root():
     """Redirect root to /healthz for easy monitoring."""
     return redirect("/healthz")
-    
+
 # ── Telegram Handlers ─────────────────────────────────────────
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] start")
@@ -92,7 +92,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if any(word in user_text.lower() for word in ["suicidal", "hopeless", "depressed", "end it all"]):
         await update.message.reply_text(
             "💔 I'm truly sorry you're feeling this way. Please know that you're not alone.\n\n"
-            "It takes strength to express what you're going through, and I’m here for you 
+            "It takes strength to express what you're going through, and I’m here for you "
             " — to listen, support, or simply be present. You matter, and your feelings are valid.\n\n"
             "If things feel overwhelming, I encourage you to talk to someone."
             "You can reach out to Samaritans of Singapore at 📞 1800-221-4444 or visit 🌐 sos.org.sg, "
