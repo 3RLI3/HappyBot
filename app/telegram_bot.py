@@ -178,13 +178,21 @@ async def on_startup(app):
     await app.bot.set_webhook(url=os.getenv("WEBHOOK_URL") + "/telegram")
 
 def main():
+    # Start Flask server in a separate thread
+    port = int(os.getenv("PORT", 10000))
+    threading.Thread(
+        target=lambda: health_app.run(host="0.0.0.0", port=port),
+        daemon=True
+    ).start()
+
+    # Create the Telegram application
     app = (
         ApplicationBuilder()
         .token(os.getenv("TELEGRAM_TOKEN"))
         .build()
     )
 
-    # Register handlers (use `app`, not `application`)
+    # Register all handlers
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("checkin", checkin_command))
@@ -194,10 +202,10 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(PollHandler(poll_handler))
 
-    # Start webhook
+    # Run Telegram webhook server
     app.run_webhook(
         listen="0.0.0.0",
-        port=int(os.getenv("PORT", 10000)),
+        port=port,
         webhook_path="/telegram",
         on_startup=on_startup
     )
