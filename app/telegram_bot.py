@@ -176,36 +176,33 @@ async def set_webhook():
     await telegram_app.bot.delete_webhook(drop_pending_updates=True)
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/telegram")
 
-async def on_startup(app):
-    await app.bot.set_webhook(url=os.getenv("WEBHOOK_URL") + "/telegram")
+async def start_command(update, context):
+    await update.message.reply_text("Hello! I'm your bot.")
 
-# Create the Telegram application
 def main():
-    FLASK_PORT = int(os.getenv("FLASK_PORT", 10000))
-    BOT_PORT = int(os.getenv("BOT_PORT", 8443))
-    WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+    # Load environment variables
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # e.g., https://yourdomain.com
+    PORT = int(os.getenv("PORT", 8443))
 
+    # Start Flask app in a separate thread
     threading.Thread(
-        target=lambda: health_app.run(host="0.0.0.0", port=FLASK_PORT),
+        target=lambda: health_app.run(host="0.0.0.0", port=PORT),
         daemon=True
     ).start()
 
-    application = (
-        ApplicationBuilder()
-        .token(os.getenv("TELEGRAM_TOKEN"))
-        .build()
-    )
+    # Create the Telegram application
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-    # Add handlers (unchanged)
+    # Register handlers
     application.add_handler(CommandHandler("start", start_command))
-    # ... (rest of your handlers)
-    
+
+    # Run the webhook
     application.run_webhook(
         listen="0.0.0.0",
-        port=BOT_PORT,
+        port=PORT,
         url_path="/telegram",
-        webhook_url=f"{WEBHOOK_URL}/telegram",
-        on_startup=on_startup
+        webhook_url=f"{WEBHOOK_URL}/telegram"
     )
 
 if __name__ == "__main__":
