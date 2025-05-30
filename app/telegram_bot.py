@@ -59,8 +59,11 @@ def telegram_webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
 
     # hand the work off to the running PTB loop
-    def _run():
-    asyncio.create_task(application.process_update(update), name="tg-update")
+    def _run():                                  # <-- header
+        asyncio.create_task(                     # <-- 4-space indent
+            application.process_update(update),
+            name="tg-update"
+        )
 
     bot_loop.call_soon_threadsafe(_run)
 
