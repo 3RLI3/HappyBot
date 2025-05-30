@@ -32,6 +32,8 @@ PORT = int(os.getenv("PORT", 10000))
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
 # === Flask ===
+health_app = Flask(__name__, static_folder="../static")
+
 @health_app.route("/healthz")
 def healthz():
     return jsonify(status="ok"), 200
