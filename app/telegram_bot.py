@@ -36,6 +36,8 @@ TOKEN       = os.getenv("TELEGRAM_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")      # e.g. https://happybot-xusj.onrender.com
 PORT        = int(os.getenv("PORT", "10000"))
 
+STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
+
 # ── Build the PTB application ─────────────────────────────────
 app = ApplicationBuilder().token(TOKEN).build()
 
@@ -44,7 +46,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] /start")
 
     # URL must match the domain registered in BotFather
-    miniapp_url = "https://happybot-xusj.onrender.com/miniapp/index.html"
+    miniapp_url = f"{send_from_directory(STATIC_DIR, filename)}"
 
     # Button that launches the Telegram Mini App
     keyboard = [
@@ -269,6 +271,19 @@ async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
             logging.warning(f"Couldn't send message to user {user_id}: {e}")
     else:
         logging.warning(f"[poll answer] No option selected by user {user_id}")
+
+# === Multimedia Handlers ===
+
+async def send_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send an exercise sticker."""
+    sticker_id = os.getenv("static/exercise_sticker_id.png")
+    await update.message.reply_sticker(sticker=sticker_id)
+
+async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send a Tai Chi exercise video snippet."""
+    video_url = os.getenv("https://www.youtube.com/watch?v=y2RAEnWreoE&t=6s")
+    await update.message.reply_video(video=video_url, caption="🧘‍♂️ Try this Tai Chi routine!")
+
 
 # ── Register handlers ───────────────────────────────────────────
 app.add_handler(CommandHandler("start", start_command))
