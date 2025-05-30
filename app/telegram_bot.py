@@ -1,9 +1,9 @@
 import os
 import logging
 import tempfile
-import asyncio
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, send_from_directory, request
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -23,7 +23,7 @@ from app.langchain_prompts import format_prompt
 from app.utils import detect_context
 from app.session_db import update_user_context
 
-# === ENV ===
+# --- Load environment variables ---
 load_dotenv()
 logging.basicConfig(level=logging.WARNING)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -31,7 +31,7 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
-# === Flask ===
+# --- Flask app for health and static ---
 health_app = Flask(__name__, static_folder="../static")
 
 @health_app.route("/healthz")
@@ -51,16 +51,19 @@ def serve_miniapp(filename):
 def root():
     return redirect("/healthz")
 
-# === Telegram bot ===
+# --- Telegram bot application (PTB) ---
 application = ApplicationBuilder().token(TOKEN).build()
+dispatcher = application.dispatcher  # For direct update processing
 
+# --- Telegram webhook endpoint ---
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put_nowait(update)
+    data = request.get_json(force=True)
+    update = Update.de_json(data, application.bot)
+    dispatcher.process_update(update)  # Directly process update
     return jsonify(status="ok")
 
-# === Handlers ===
+# === Telegram Handlers ===
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hello! I’m HappyBot, your friendly companion. Type /help to see what I can do.")
 
@@ -156,7 +159,7 @@ async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE
     video_url = os.getenv("EXERCISE_VIDEO_URL")
     await update.message.reply_video(video=video_url, caption="🧘‍♂️ Try this Tai Chi routine!")
 
-# Register all handlers
+# --- Register all handlers ---
 application.add_handler(CommandHandler("start", start_command))
 application.add_handler(CommandHandler("help", help_command))
 application.add_handler(CommandHandler("checkin", checkin_command))
@@ -166,10 +169,11 @@ application.add_handler(MessageHandler(filters.VOICE, handle_voice))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 application.add_handler(PollHandler(poll_handler))
 
-# --- ASYNC Webhook Setup for Gunicorn/Flask 3.x ---
-async def setup_webhook():
-    await application.bot.delete_webhook()
-    await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
+# --- Webhook Setup ---
+# Set your webhook ONCE after deploying (manually or with a script):
+# curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://yourdomain.onrender.com/telegram"
 
-# ---- NO __main__ block for production Gunicorn ----
-# Gunicorn runs: gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --workers=1
+# --- Gunicorn Start Command ---
+# gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --workers=1
+
+# --- No __main__ section needed; Gunicorn loads health_app ---
