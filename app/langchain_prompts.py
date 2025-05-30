@@ -67,11 +67,15 @@ prompt_templates = {
 
 def format_prompt(context, query, user_id=None):
     prompt_template = prompt_templates.get(context, prompt_templates["general_conversation"])
-
     history_lines = get_user_history(user_id) if user_id else []
-    truncated_history = "\n".join(history_lines[-4:])  # last 4 messages
+    history_text = "\n".join(history_lines[-4:])  # last 4 lines only
 
-    return prompt_template.format(
-        history=f"Recent conversation:\n{truncated_history}" if truncated_history else "This is the start of the conversation."
+    prompt_with_history = (
+        "You are a friendly assistant helping seniors with daily life tasks.\n"
+        "Keep responses clear, connected to recent topics, and easy to understand.\n\n"
     )
-    
+    if history_text:
+        prompt_with_history += f"Conversation so far:\n{history_text}\n\n"
+
+    prompt_with_history += f"User: {query}\nResponse:"
+    return prompt_with_history
