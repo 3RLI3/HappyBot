@@ -39,10 +39,6 @@ PORT        = int(os.getenv("PORT", "10000"))
 # ── Build the PTB application ─────────────────────────────────
 app = ApplicationBuilder().token(TOKEN).build()
 
-@app.route("/miniapp/<path:filename>")
-def serve_miniapp(filename):
-    return send_from_directory(STATIC_DIR, filename)
-
 # ── Telegram Handlers ─────────────────────────────────────────
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] start")
