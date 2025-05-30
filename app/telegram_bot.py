@@ -106,6 +106,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"[handle_message] Received text: {update.message.text}")
     text = update.message.text or ""
     uid = update.effective_chat.id
     crisis_keywords = ["depressed", "hopeless", "suicidal", "kill myself"]
