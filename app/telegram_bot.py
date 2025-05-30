@@ -128,7 +128,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         logging.exception("generate_response failed")
         reply = "😔 Oops! Something went wrong while generating my response. Please try again later."
-            append_user_history(user_id, f"Bot: {reply}")
+        append_user_history(user_id, f"Bot: {reply}")
     
     await update.message.reply_text(f"💬 {reply}")
 
