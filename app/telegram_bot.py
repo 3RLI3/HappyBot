@@ -171,11 +171,22 @@ async def setup_webhook():
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
 
-# NOTE:
-# - Do NOT call health_app.run() in production with Gunicorn!
-# - Gunicorn loads the Flask app, so just set webhook once at startup:
-if __name__ == "__main__":
-    asyncio.run(setup_webhook())
-    # For development only, you can uncomment:
-    # health_app.run(host="0.0.0.0", port=PORT)
+def run_telegram():
+    # This will block, so it needs to run in a thread!
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,                    # Flask and PTB will share the same port, that's fine for webhooks
+        url_path="/telegram",
+        webhook_url=f"{WEBHOOK_URL}/telegram",
+        allowed_updates=Update.ALL_TYPES,
+    )
 
+if __name__ == "__main__":
+    import threading
+    # Set webhook before anything else
+    asyncio.run(setup_webhook())
+    # Start the Telegram bot (webhook receiver) in the background
+    # t = threading.Thread(target=run_telegram, daemon=True)
+    # t.start()
+    # Then start Flask (dev only! In prod, use Gunicorn)
+    # health_app.run(host="0.0.0.0", port=PORT)
