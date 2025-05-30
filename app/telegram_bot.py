@@ -204,11 +204,9 @@ def main():
 
         await application.initialize()
         await application.start()
-        await application.updater.start_polling()  # or skip if you only use webhooks
-        await application.updater.idle()
+        await application.wait_until_shutdown()
 
     asyncio.run(run_telegram())
 
 if __name__ == "__main__":
     main()
- 
