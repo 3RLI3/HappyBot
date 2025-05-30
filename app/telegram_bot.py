@@ -54,8 +54,8 @@ def root():
 
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    application.update_queue.put(update)
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    asyncio.create_task(telegram_app.process_update(update))
     return jsonify(status="received")
 
 # Command Handlers
@@ -162,53 +162,43 @@ async def poll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text("Thanks for sharing! Talk again next week.")
 
 async def send_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    sticker_id = os.getenv("static/exercise_sticker_id.png")
+    sticker_id = os.getenv("STICKER_ID")
     await update.message.reply_sticker(sticker=sticker_id)
 
 async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    video_url = os.getenv("https://www.youtube.com/watch?v=y2RAEnWreoE")
+    video_url = os.getenv("EXERCISE_VIDEO_URL")
     await update.message.reply_video(video=video_url, caption="\U0001F9D8\u200D♂\ufe0f Try this Tai Chi routine!")
 
-async def on_startup(application):
-    await application.bot.delete_webhook(drop_pending_updates=True)
-    await application.bot.set_webhook(f"{WEBHOOK_URL}/telegram")
+async def set_webhook():
+    await telegram_app.bot.delete_webhook(drop_pending_updates=True)
+    await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/telegram")
 
+# Create the Telegram application
+telegram_app = (
+    ApplicationBuilder()
+    .token(TOKEN)
+    .build()
+)
 
-async def on_startup(app):
-    await app.bot.set_webhook(url=os.getenv("WEBHOOK_URL") + "/telegram")
+# Register all handlers
+telegram_app.add_handler(CommandHandler("start", start_command))
+telegram_app.add_handler(CommandHandler("help", help_command))
+telegram_app.add_handler(CommandHandler("checkin", checkin_command))
+telegram_app.add_handler(CommandHandler("sticker", send_sticker))
+telegram_app.add_handler(CommandHandler("exercise", send_exercise_video))
+telegram_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+telegram_app.add_handler(PollHandler(poll_handler))
 
 def main():
-    # Start Flask server in a separate thread
     port = int(os.getenv("PORT", 10000))
     threading.Thread(
         target=lambda: health_app.run(host="0.0.0.0", port=port),
         daemon=True
     ).start()
 
-    # Create the Telegram application
-    app = (
-        ApplicationBuilder()
-        .token(os.getenv("TELEGRAM_TOKEN"))
-        .build()
-    )
-
-    # Register all handlers
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("checkin", checkin_command))
-    app.add_handler(CommandHandler("sticker", send_sticker))
-    app.add_handler(CommandHandler("exercise", send_exercise_video))
-    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(PollHandler(poll_handler))
-
-    # Run Telegram webhook server
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        webhook_path="/telegram",
-        on_startup=on_startup
-    )
+    asyncio.run(set_webhook())
+    telegram_app.run_polling()  # fallback; optional, safe to remove if not needed
 
 if __name__ == "__main__":
     main()
