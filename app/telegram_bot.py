@@ -5,7 +5,7 @@ import threading
 import logging
 import tempfile
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect
+from flask import Flask, jsonify, redirect, send_from_directory
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.WARNING)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # Flask app for health checks
-health_app = Flask(__name__)
+health_app = Flask(__name__, static_folder="../static")
 
 @health_app.route("/healthz")
 def healthz():
@@ -42,6 +42,10 @@ def healthz():
     except Exception:
         pass
     return jsonify(status="ok"), 200
+
+@health_app.route("/miniapp/<path:filename>")
+def serve_miniapp(filename):
+    return send_from_directory("../static/miniapp", filename)
 
 @health_app.route("/")
 def root():

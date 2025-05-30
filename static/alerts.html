@@ -1,0 +1,28 @@
+
+<!DOCTYPE html>
+<html>
+<head><title>Set Alerts</title></head>
+<body>
+<h2>Set an Alert</h2>
+<form id="alertForm">
+  Message: <input type="text" name="message"><br>
+  Trigger Time: <input type="datetime-local" name="datetime"><br>
+  <button type="submit">Send Alert</button>
+</form>
+<div id="response"></div>
+<script>
+document.getElementById("alertForm").onsubmit = async function(e) {
+  e.preventDefault();
+  const message = e.target.message.value;
+  const datetime = e.target.datetime.value;
+  const response = await fetch("https://your-happybot-api.com/api/alert", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, datetime })
+  });
+  const result = await response.json();
+  document.getElementById("response").innerText = result.status || "Alert sent!";
+};
+</script>
+</body>
+</html>
