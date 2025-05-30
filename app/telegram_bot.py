@@ -53,14 +53,17 @@ def root():
 
 # --- Telegram bot application (PTB) ---
 application = ApplicationBuilder().token(TOKEN).build()
-dispatcher = application.dispatcher  # For direct update processing
 
 # --- Telegram webhook endpoint ---
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, application.bot)
-    dispatcher.process_update(update)  # Directly process update
+    # PTB v20+ update processing is now async: schedule in event loop!
+    # If running with Gunicorn (sync), you must use create_task.
+    # This fires-and-forgets update handling, non-blocking for Flask.
+    import asyncio
+    asyncio.get_event_loop().create_task(application.process_update(update))
     return jsonify(status="ok")
 
 # === Telegram Handlers ===
@@ -177,3 +180,4 @@ application.add_handler(PollHandler(poll_handler))
 # gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --workers=1
 
 # --- No __main__ section needed; Gunicorn loads health_app ---
+
