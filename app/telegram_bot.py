@@ -1,9 +1,9 @@
 import os
 import logging
 import tempfile
+import asyncio
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, send_from_directory, request
-
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -14,24 +14,24 @@ from telegram.ext import (
     filters,
 )
 
+# === Custom business logic ===
 import speech_recognition as sr
 from gtts import gTTS
 from pydub import AudioSegment
-
 from app.sea_lion_api import generate_response
 from app.langchain_prompts import format_prompt
 from app.utils import detect_context
 from app.session_db import update_user_context
 
-# --- Load environment variables ---
+# === ENV & Logging ===
 load_dotenv()
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")   # e.g. https://happybot-xusj.onrender.com
 PORT = int(os.getenv("PORT", 10000))
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
-# --- Flask app for health and static ---
+# === Flask ===
 health_app = Flask(__name__, static_folder="../static")
 
 @health_app.route("/healthz")
@@ -51,21 +51,30 @@ def serve_miniapp(filename):
 def root():
     return redirect("/healthz")
 
-# --- Telegram bot application (PTB) ---
+# === Telegram Application (PTB v20+) ===
 application = ApplicationBuilder().token(TOKEN).build()
+application_is_ready = False
+application_ready_lock = threading.Lock()
 
-# --- Telegram webhook endpoint ---
+@health_app.before_first_request
+def init_ptb_application():
+    global application_is_ready
+    with application_ready_lock:
+        if not application_is_ready:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(application.initialize())
+            loop.run_until_complete(application.start())
+            application_is_ready = True
+
+# === Telegram webhook endpoint ===
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
-    # Run the coroutine in a new event loop for each request
-    import asyncio
-    asyncio.run(application.process_update(update))
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(application.process_update(update))
     return jsonify(status="ok")
 
-
-# === Telegram Handlers ===
+# === Telegram handlers ===
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hello! I’m HappyBot, your friendly companion. Type /help to see what I can do.")
 
@@ -161,7 +170,7 @@ async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE
     video_url = os.getenv("EXERCISE_VIDEO_URL")
     await update.message.reply_video(video=video_url, caption="🧘‍♂️ Try this Tai Chi routine!")
 
-# --- Register all handlers ---
+# === Register handlers ===
 application.add_handler(CommandHandler("start", start_command))
 application.add_handler(CommandHandler("help", help_command))
 application.add_handler(CommandHandler("checkin", checkin_command))
@@ -171,12 +180,17 @@ application.add_handler(MessageHandler(filters.VOICE, handle_voice))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 application.add_handler(PollHandler(poll_handler))
 
-# --- Webhook Setup ---
-# Set your webhook ONCE after deploying (manually or with a script):
-# curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://yourdomain.onrender.com/telegram"
+# === Set webhook on startup (for Gunicorn) ===
+async def set_webhook():
+    await application.bot.delete_webhook()
+    await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
 
-# --- Gunicorn Start Command ---
-# gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --workers=1
+# For Gunicorn: set webhook once when process starts.
+if os.getenv("RENDER", "").lower() == "true" or os.getenv("GUNICORN_CMD_ARGS"):
+    # Only set webhook if running in production (Render, Gunicorn, etc)
+    asyncio.run(set_webhook())
 
-# --- No __main__ section needed; Gunicorn loads health_app ---
-
+# For local dev, uncomment below:
+# if __name__ == "__main__":
+#     asyncio.run(set_webhook())
+#     health_app.run(host="0.0.0.0", port=PORT)
