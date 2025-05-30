@@ -1,5 +1,6 @@
 import os, logging, tempfile, asyncio, threading
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, jsonify, redirect, send_from_directory, request
 from telegram import Update
 from telegram.ext import (
@@ -53,21 +54,30 @@ bot_loop.run_until_complete(application.initialize())
 bot_loop.run_until_complete(application.start())
 logging.info("PTB application initialised ✔")
 
+async def log_ptb_error(update, context: ContextTypes.DEFAULT_TYPE):
+    logging.exception("PTB handler exception", exc_info=context.error)
+
+application.add_error_handler(log_ptb_error)
+
 # ── Flask webhook route ───────────────────────────────────────────────────────
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
 
-    # hand the work off to the running PTB loop
-    def _run():                                  # <-- header
-        asyncio.create_task(                     # <-- 4-space indent
-            application.process_update(update),
-            name="tg-update"
-        )
+    # hand the coroutine to PTB's event-loop in a safe way
+    fut = asyncio.run_coroutine_threadsafe(
+        application.process_update(update), bot_loop
+    )
 
-    bot_loop.call_soon_threadsafe(_run)
+    # optional: log exceptions that happen inside the handler
+    def _done(f):
+        exc = f.exception()
+        if exc:
+            logging.exception("handler failed", exc_info=exc)
+    fut.add_done_callback(_done)
 
     return jsonify(status="ok")
+
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ── Telegram handlers (unchanged) ─────────────────────────────────────────────
