@@ -43,9 +43,9 @@ def miniapp(filename): return send_from_directory(STATIC_DIR, filename)
 def root(): return redirect("/healthz")
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ── One global asyncio loop kept alive for PTB ────────────────────────────────
+# ── One global asyncio loop kept alive for PTB ───────────────────────────
 bot_loop = asyncio.new_event_loop()
-asyncio.set_event_loop(bot_loop)            # makes PTB happy
+asyncio.set_event_loop(bot_loop)        # makes PTB happy
 
 application = ApplicationBuilder().token(TOKEN).build()
 
@@ -54,10 +54,19 @@ bot_loop.run_until_complete(application.initialize())
 bot_loop.run_until_complete(application.start())
 logging.info("PTB application initialised ✔")
 
+# keep the loop alive in background
+def _run_loop_forever() -> None:
+    bot_loop.run_forever()
+
+threading.Thread(target=_run_loop_forever, daemon=True).start()
+logging.info("asyncio event-loop running forever ✔")
+
+# optional: log any handler exceptions
 async def log_ptb_error(update, context: ContextTypes.DEFAULT_TYPE):
     logging.exception("PTB handler exception", exc_info=context.error)
 
 application.add_error_handler(log_ptb_error)
+
 
 # ── Flask webhook route ───────────────────────────────────────────────────────
 @health_app.route("/telegram", methods=["POST"])
