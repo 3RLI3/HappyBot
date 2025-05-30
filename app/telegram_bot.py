@@ -173,40 +173,34 @@ async def on_startup(application):
     await application.bot.delete_webhook(drop_pending_updates=True)
     await application.bot.set_webhook(f"{WEBHOOK_URL}/telegram")
 
+
+async def on_startup(app):
+    await app.bot.set_webhook(url=os.getenv("WEBHOOK_URL") + "/telegram")
+
 def main():
-    global application, bot
+    app = (
+        ApplicationBuilder()
+        .token(os.getenv("TELEGRAM_TOKEN"))
+        .build()
+    )
 
-    port = int(os.getenv("PORT", 10000))
-    threading.Thread(
-        target=lambda: health_app.run(host="0.0.0.0", port=port),
-        daemon=True
-    ).start()
+    # Register handlers (use `app`, not `application`)
+    app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("checkin", checkin_command))
+    app.add_handler(CommandHandler("sticker", send_sticker))
+    app.add_handler(CommandHandler("exercise", send_exercise_video))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(PollHandler(poll_handler))
 
-    async def run_telegram():
-        global application, bot
-
-        application = (
-            ApplicationBuilder()
-            .token(TOKEN)
-            .post_init(on_startup)
-            .build()
-        )
-        bot = application.bot
-
-        application.add_handler(CommandHandler("start", start_command))
-        application.add_handler(CommandHandler("help", help_command))
-        application.add_handler(CommandHandler("checkin", checkin_command))
-        application.add_handler(CommandHandler("sticker", send_sticker))
-        application.add_handler(CommandHandler("exercise", send_exercise_video))
-        application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-        application.add_handler(PollHandler(poll_handler))
-
-        await application.initialize()
-        await application.start()
-        await application.idle()  # <== correct for your version
-
-    asyncio.run(run_telegram())
+    # Start webhook
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.getenv("PORT", 10000)),
+        webhook_path="/telegram",
+        on_startup=on_startup
+    )
 
 if __name__ == "__main__":
     main()
