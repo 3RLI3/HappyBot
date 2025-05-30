@@ -5,6 +5,7 @@ import asyncio
 import datetime
 from dotenv import load_dotenv
 
+from telegram import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -45,11 +46,25 @@ def serve_miniapp(filename):
 # ── Telegram Handlers ─────────────────────────────────────────
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] start")
+
+    # Mini App launch button
+    miniapp_url = "https://happybot-xusj.onrender.com/static/miniapp/index.html"
+    keyboard = [
+        [InlineKeyboardButton(
+            text="🧩 Open HappyBot Mini App",
+            web_app=WebAppInfo(url=miniapp_url)
+        )]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # Send welcome message with button
     await update.message.reply_text(
         "🌞 *Welcome to HappyBot!*\n\n"
         "I'm your friendly companion for wellbeing, relaxation, and a little bit of fun. "
+        "You can tap the button below to explore the HappyBot Mini App!\n\n"
         "Type /help to see everything I can do — or just say hello!",
-        parse_mode="Markdown"
+        parse_mode="Markdown",
+        reply_markup=reply_markup
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -72,6 +87,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text or ""
     user_id = update.effective_chat.id
     logging.info(f"[handler] message: {user_text!r}")
+
+    # Handle Web App Data (from Mini App)
+    if update.message.web_app_data:
+        data = update.message.web_app_data.data
+        logging.info(f"[handler] received web_app_data: {data!r}")
+        await update.message.reply_text(f"🧩 Thanks! You submitted:\n\n`{data}`", parse_mode="Markdown")
+        returnnfo(f"[handler] message: {user_text!r}")
 
     # Crisis support
     if any(word in user_text.lower() for word in ["suicidal", "hopeless", "depressed", "end it all"]):
