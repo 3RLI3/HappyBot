@@ -51,9 +51,10 @@ application = ApplicationBuilder().token(TOKEN).build()
 
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    # Handle Telegram update via webhook
+    """This handles Telegram webhook updates."""
     update = Update.de_json(request.get_json(force=True), application.bot)
-    application.create_task(application.process_update(update))
+    # FIX: Run update handler synchronously per request (safe, reliable)
+    asyncio.run(application.process_update(update))
     return jsonify(status="ok")
 
 # === Telegram handlers ===
@@ -162,10 +163,12 @@ application.add_handler(MessageHandler(filters.VOICE, handle_voice))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 application.add_handler(PollHandler(poll_handler))
 
-# === Set webhook on startup (for Gunicorn) ===
+# === Set webhook on startup (for Gunicorn, set ONCE on deploy) ===
+async def setup_webhook():
+    await application.bot.delete_webhook(drop_pending_updates=True)
+    await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
+
 if __name__ == "__main__":
-    import asyncio
-    async def setup_webhook():
-        await application.bot.delete_webhook()
-        await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
     asyncio.run(setup_webhook())
+    # Optional: for local development only
+    # health_app.run(host="0.0.0.0", port=PORT)
