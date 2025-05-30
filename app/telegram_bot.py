@@ -1,19 +1,13 @@
-import os
-import logging
-import tempfile
-import asyncio
+import os, logging, tempfile, asyncio, threading
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, send_from_directory, request
 from telegram import Update
 from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    PollHandler,
-    ContextTypes,
-    filters,
+    ApplicationBuilder, CommandHandler, MessageHandler, PollHandler,
+    ContextTypes, filters,
 )
-# === Custom business logic ===
+
+# ── your extra imports (speech-to-text, GPT, etc.) ────────────────────────────
 import speech_recognition as sr
 from gtts import gTTS
 from pydub import AudioSegment
@@ -21,49 +15,62 @@ from app.sea_lion_api import generate_response
 from app.langchain_prompts import format_prompt
 from app.utils import detect_context
 from app.session_db import update_user_context
+# ──────────────────────────────────────────────────────────────────────────────
 
-# === ENV & Logging ===
+# ── ENV / logging ─────────────────────────────────────────────────────────────
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-PORT = int(os.getenv("PORT", 10000))
-STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
-# === Flask ===
+TOKEN       = os.getenv("TELEGRAM_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")      # e.g. https://happybot-xusj.onrender.com
+PORT        = int(os.getenv("PORT", 10000))
+STATIC_DIR  = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "static", "miniapp")
+)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Flask static + health ─────────────────────────────────────────────────────
 health_app = Flask(__name__, static_folder="../static")
 
 @health_app.route("/healthz")
-def healthz():
-    return jsonify(status="ok"), 200
+def healthz(): return jsonify(status="ok"), 200
 
 @health_app.route("/miniapp/<path:filename>")
-def serve_miniapp(filename):
-    return send_from_directory(STATIC_DIR, filename)
+def miniapp(filename): return send_from_directory(STATIC_DIR, filename)
 
 @health_app.route("/")
-def root():
-    return redirect("/healthz")
+def root(): return redirect("/healthz")
+# ──────────────────────────────────────────────────────────────────────────────
 
-# --- Telegram PTB Application ---
-application = ApplicationBuilder().token(TOKEN).build()
+# ── One global asyncio loop kept alive for PTB ────────────────────────────────
+bot_loop = asyncio.new_event_loop()
+asyncio.set_event_loop(bot_loop)            # makes PTB happy
 
-app_initialized = False
+application = ApplicationBuilder().token(TOKEN).build(loop=bot_loop)
 
+# initialise & start PTB ONCE, inside that loop
+bot_loop.run_until_complete(application.initialize())
+bot_loop.run_until_complete(application.start())
+logging.info("PTB application initialised ✔")
+
+# ── Flask webhook route ───────────────────────────────────────────────────────
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    global app_initialized
     update = Update.de_json(request.get_json(force=True), application.bot)
-    # Initialize PTB app ONCE before first update!
-    if not app_initialized:
-        asyncio.run(application.initialize())
-        app_initialized = True
-    asyncio.run(application.process_update(update))
-    return jsonify(status="ok")
 
-# === Telegram handlers ===
+    # Schedule processing on the long-lived loop, wait until done
+    fut = asyncio.run_coroutine_threadsafe(
+        application.process_update(update), bot_loop
+    )
+    fut.result()          # blocks this request until the handler finishes
+    return jsonify(status="ok")
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Telegram handlers (unchanged) ─────────────────────────────────────────────
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Hello! I’m HappyBot, your friendly companion. Type /help to see what I can do.")
+    await update.message.reply_text(
+        "👋 Hello! I’m HappyBot, , your friendly companion. Type /help to see what I can do."
+    )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -166,13 +173,19 @@ application.add_handler(CommandHandler("exercise", send_exercise_video))
 application.add_handler(MessageHandler(filters.VOICE, handle_voice))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 application.add_handler(PollHandler(poll_handler))
+# ──────────────────────────────────────────────────────────────────────────────
 
-# === Set webhook on startup (for Gunicorn, set ONCE on deploy) ===
-async def setup_webhook():
+# ── One-time webhook setter (run locally, *not* by Gunicorn) ──────────────────
+async def _set_webhook():
     await application.bot.delete_webhook(drop_pending_updates=True)
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
+    logging.info("Webhook set to %s/telegram", WEBHOOK_URL)
 
 if __name__ == "__main__":
-    asyncio.run(setup_webhook())
-    # Optional: for local development only
-    # health_app.run(host="0.0.0.0", port=PORT)
+    # Local dev helper:  python -m app.telegram_bot --set-webhook
+    import sys
+    if "--set-webhook" in sys.argv:
+        bot_loop.run_until_complete(_set_webhook())
+    else:
+        # run Flask dev server
+        health_app.run(host="0.0.0.0", port=PORT, debug=True)
