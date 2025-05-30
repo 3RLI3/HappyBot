@@ -1,4 +1,5 @@
 import os
+import asyncio
 import threading
 import logging
 import tempfile
@@ -198,10 +199,14 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 application.add_handler(PollHandler(poll_handler))
 
 def main():
-    # Set webhook at startup
-    application.bot.delete_webhook()
-    application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
-    # Start Flask
+    # Set webhook (async)
+    async def setup_webhook():
+        await application.bot.delete_webhook()
+        await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
+
+    asyncio.run(setup_webhook())
+
+    # Start Flask app (blocking)
     health_app.run(host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
