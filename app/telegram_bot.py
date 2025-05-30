@@ -106,9 +106,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.info(f"[handle_message] Received text: {update.message.text}")
+    logging.info(f"[handle_message] Received: {update.message.text!r}")
+
+    if not update.message:
+        logging.warning("[handle_message] No message in update")
+        return
+
     text = update.message.text or ""
     uid = update.effective_chat.id
+
     crisis_keywords = ["depressed", "hopeless", "suicidal", "kill myself"]
     if any(word in text.lower() for word in crisis_keywords):
         await update.message.reply_text(
@@ -117,6 +123,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "or visit https://www.sos.org.sg/."
         )
         return
+
     empathy_keywords = ["sad", "lonely", "down", "unhappy"]
     if any(word in text.lower() for word in empathy_keywords):
         await update.message.reply_text(
@@ -124,10 +131,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "would you like to talk more or hear something uplifting?"
         )
         return
-    ctx = detect_context(text)
-    update_user_context(uid, ctx)
-    prompt = format_prompt(ctx, text)
+
+    logging.info(f"[handle_message] Context detection triggered")
+    context = detect_context(text)
+    update_user_context(uid, context)
+    prompt = format_prompt(context, text)
     reply = generate_response(prompt)
+
+    logging.info(f"[handle_message] Reply: {reply!r}")
     await update.message.reply_text(reply)
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,8 +161,8 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Sorry, I couldn't understand your voice. Could you please try again?")
         return
     context = detect_context(text)
-    update_user_context(update.effective_chat.id, ctx)
-    prompt = format_prompt(ctx, text)
+    update_user_context(update.effective_chat.id, context)
+    prompt = format_prompt(context, text)
     reply = generate_response(prompt)
     await update.message.reply_text(reply)
     tts = gTTS(reply)
@@ -166,7 +177,7 @@ CHECKIN_OPTS = ["Great", "Okay", "Not so good"]
 async def checkin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     context.job_queue.run_weekly(
-        lambda ctx: ctx.bot.send_poll(
+        lambda context: context.bot.send_poll(
             chat_id,
             CHECKIN_Q,
             CHECKIN_OPTS,
