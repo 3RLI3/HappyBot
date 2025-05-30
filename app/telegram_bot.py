@@ -41,27 +41,43 @@ app = ApplicationBuilder().token(TOKEN).build()
 
 # ── Telegram Handlers ─────────────────────────────────────────
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.info("[handler] start")
+    logging.info("[handler] /start")
 
-    # Mini App launch button
-    miniapp_url = "https://happybot-xusj.onrender.com/static/miniapp/index.html"
+    # URL must match the domain registered in BotFather
+    miniapp_url = "https://happybot-xusj.onrender.com/miniapp/index.html"
+
+    # Button that launches the Telegram Mini App
     keyboard = [
         [InlineKeyboardButton(
-            text="🧩 Open HappyBot Mini App",
+            text="🧩 Launch HappyBot Mini App",
             web_app=WebAppInfo(url=miniapp_url)
         )]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Send welcome message with button
+    # Send welcome message with Mini App button
     await update.message.reply_text(
         "🌞 *Welcome to HappyBot!*\n\n"
-        "I'm your friendly companion for wellbeing, relaxation, and a little bit of fun. "
-        "You can tap the button below to explore the HappyBot Mini App!\n\n"
-        "Type /help to see everything I can do — or just say hello!",
+        "Tap below to open the Mini App directly in Telegram. You can set alerts, check in on your wellbeing, and explore more features.\n\n"
+        "Type /help anytime for guidance!",
         parse_mode="Markdown",
         reply_markup=reply_markup
     )
+
+
+async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    This handles submissions from the Mini App via Telegram's `web_app_data`.
+    It expects the Mini App to send data with `window.Telegram.WebApp.sendData(...)`.
+    """
+    if update.message.web_app_data:
+        data = update.message.web_app_data.data
+        logging.info(f"[handler] received web_app_data: {data!r}")
+
+        await update.message.reply_text(
+            f"✅ Got your submission from the Mini App:\n\n`{data}`",
+            parse_mode="Markdown"
+        )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] help")
