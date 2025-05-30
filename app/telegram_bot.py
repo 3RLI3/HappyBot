@@ -1,5 +1,4 @@
 import os
-import threading 
 import logging
 import tempfile
 import asyncio
@@ -33,15 +32,8 @@ PORT = int(os.getenv("PORT", 10000))
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
 # === Flask ===
-health_app = Flask(__name__, static_folder="../static")
-
 @health_app.route("/healthz")
 def healthz():
-    try:
-        from app.session_db import _client as _redis_client
-        _redis_client.ping()
-    except Exception:
-        pass
     return jsonify(status="ok"), 200
 
 @health_app.route("/miniapp/<path:filename>")
@@ -52,27 +44,14 @@ def serve_miniapp(filename):
 def root():
     return redirect("/healthz")
 
-# === Telegram Application (PTB v20+) ===
+# --- Telegram PTB Application ---
 application = ApplicationBuilder().token(TOKEN).build()
-application_is_ready = False
-application_ready_lock = threading.Lock()
 
-@health_app.before_first_request
-def init_ptb_application():
-    global application_is_ready
-    with application_ready_lock:
-        if not application_is_ready:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(application.initialize())
-            loop.run_until_complete(application.start())
-            application_is_ready = True
-
-# === Telegram webhook endpoint ===
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
+    # Handle Telegram update via webhook
     update = Update.de_json(request.get_json(force=True), application.bot)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(application.process_update(update))
+    application.create_task(application.process_update(update))
     return jsonify(status="ok")
 
 # === Telegram handlers ===
@@ -182,16 +161,9 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 application.add_handler(PollHandler(poll_handler))
 
 # === Set webhook on startup (for Gunicorn) ===
-async def set_webhook():
-    await application.bot.delete_webhook()
-    await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
-
-# For Gunicorn: set webhook once when process starts.
-if os.getenv("RENDER", "").lower() == "true" or os.getenv("GUNICORN_CMD_ARGS"):
-    # Only set webhook if running in production (Render, Gunicorn, etc)
-    asyncio.run(set_webhook())
-
-# For local dev, uncomment below:
-# if __name__ == "__main__":
-#     asyncio.run(set_webhook())
-#     health_app.run(host="0.0.0.0", port=PORT)
+if __name__ == "__main__":
+    import asyncio
+    async def setup_webhook():
+        await application.bot.delete_webhook()
+        await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
+    asyncio.run(setup_webhook())
