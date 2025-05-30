@@ -46,7 +46,7 @@ def root(): return redirect("/healthz")
 bot_loop = asyncio.new_event_loop()
 asyncio.set_event_loop(bot_loop)            # makes PTB happy
 
-application = ApplicationBuilder().token(TOKEN).build(loop=bot_loop)
+application = ApplicationBuilder().token(TOKEN).build()
 
 # initialise & start PTB ONCE, inside that loop
 bot_loop.run_until_complete(application.initialize())
