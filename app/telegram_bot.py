@@ -206,10 +206,6 @@ async def _set_webhook():
     logging.info("✅ Webhook set")
 
 if __name__ == "__main__":
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path="/telegram",             # ← correct
-        webhook_url=f"{WEBHOOK_URL}/telegram",
-        drop_pending_updates=True
-    )
+    import sys
+    if "--set-webhook" in sys.argv:
+        bot_loop.run_until_complete(_set_webhook())
