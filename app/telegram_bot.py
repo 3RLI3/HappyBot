@@ -1,6 +1,6 @@
 # app/telegram_bot.py
-
 import os
+import asyncio
 import threading
 import logging
 import tempfile
@@ -14,6 +14,7 @@ from telegram.ext import (
     PollHandler,
     filters,
     ContextTypes,
+    Application,
 )
 
 import speech_recognition as sr
@@ -54,7 +55,11 @@ def root():
     """Redirect root to /healthz for easy monitoring."""
     return redirect("/healthz")
 
-
+@health_app.route("/telegram", methods=["POST"])
+def telegram_webhook():
+    """Entry point for Telegram webhook (Render will POST updates here)."""
+    from app.telegram_bot import app as telegram_app
+    return telegram_app.update_queue.put_nowait(request.get_json(force=True)) or '', 200
 # === Command Handlers ===
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -204,20 +209,16 @@ async def on_startup(application):
     await application.bot.delete_webhook(drop_pending_updates=True)
 
 def main():
-    # 1) Start your Flask health server as before…
     port = int(os.getenv("PORT", 10000))
-    threading.Thread(
-        target=lambda: health_app.run(host="0.0.0.0", port=port),
-        daemon=True
-    ).start()
+    threading.Thread(target=lambda: health_app.run(host="0.0.0.0", port=port), daemon=True).start()
 
-    # 2) Build the Telegram application, registering the startup hook
-    app = (
-        ApplicationBuilder()
-        .token(TOKEN)
-        .post_init(on_startup)   # this will run before polling
-        .build()
-    )
+    async def launch():
+        application = (
+            ApplicationBuilder()
+            .token(TOKEN)
+            .post_init(on_startup)
+            .build()
+        )
 
     # 3) Add your command / message handlers…
     app.add_handler(CommandHandler("start", start_command))
@@ -230,6 +231,14 @@ def main():
     app.add_handler(PollHandler(poll_handler))
     # Start long polling, dropping any stale updates on the server
     app.run_polling(drop_pending_updates=True)
+
+    await application.initialize()
+        await application.start()
+        await application.bot.set_webhook(url=os.getenv("WEBHOOK_URL"))
+        print("✅ Webhook set.")
+        await asyncio.Event().wait()
+
+    asyncio.run(launch())
 
 if __name__ == "__main__":
     main()
