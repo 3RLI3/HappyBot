@@ -2,7 +2,7 @@ import os
 import logging
 import tempfile
 import asyncio
-
+import datetime
 from dotenv import load_dotenv
 
 from telegram import Update
@@ -22,7 +22,11 @@ from pydub import AudioSegment
 from app.sea_lion_api import generate_response
 from app.langchain_prompts import format_prompt
 from app.utils import detect_context
-from app.session_db import update_user_context
+from app.session_db import (
+    update_user_context,
+    append_user_history,
+    get_user_context,
+)
 
 # ── ENV / Logging ────────────────────────────────────────────
 load_dotenv()
@@ -65,7 +69,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
     logging.info(f"[handler] message: {user_text!r}")
 
-    # Simple keyword-based emotional shortcuts
+    # 🛑 Crisis keyword check
     crisis_words = ["suicidal", "hopeless", "depressed", "end it all"]
     if any(word in user_text.lower() for word in crisis_words):
         await update.message.reply_text(
@@ -76,6 +80,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # 💬 Empathy keyword check
     empathy_words = ["sad", "lonely", "anxious", "unhappy", "tired"]
     if any(word in user_text.lower() for word in empathy_words):
         await update.message.reply_text(
@@ -85,17 +90,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Context-aware AI reply
+    # 🧠 Detect context and update
     context_tag = detect_context(user_text)
     update_user_context(user_id, context_tag)
-    prompt = format_prompt(context_tag, user_text)
 
+    # 🗂️ Log user message to history
+    append_user_history(user_id, f"User: {user_text}")
+
+    # 🧾 Format AI prompt with conversation history
+    prompt = format_prompt(context_tag, user_text, user_id=user_id)
+
+    # 🤖 Generate response
     try:
-        reply = generate_response(prompt)
+        reply = generate_response(text, context=ctx, user_id=update.effective_chat.id)
     except Exception as e:
         logging.exception("generate_response failed")
         reply = "Oops! Something went wrong while generating my response. Please try again later."
 
+    # 📚 Add response to history
+    append_user_history(user_id, f"Bot: {reply}")
+
+    # 📤 Send reply
     await update.message.reply_text(f"💬 {reply}")
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -135,7 +150,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ctx = detect_context(text)
     update_user_context(update.effective_chat.id, ctx)
     prompt = format_prompt(ctx, text)
-    reply = generate_response(prompt)
+    reply = generate_response(text, context=ctx, user_id=update.effective_chat.id)
 
     await update.message.reply_text(reply)
     tts = gTTS(reply)
@@ -198,7 +213,7 @@ async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
         except Exception as e:
             logging.warning(f"Couldn't send message to user {user_id}: {e}")
     else:
-        logging.warning(f"[poll answer] No option selected by user {user_id}"))
+        logging.warning(f"[poll answer] No option selected by user {user_id}")
 
 # ── Register handlers ───────────────────────────────────────────
 app.add_handler(CommandHandler("start", start_command))

@@ -1,44 +1,118 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>People</title>
+  <meta charset="UTF-8">
+  <title>Contact People</title>
   <style>
     body {
       font-family: Arial, sans-serif;
+      background-color: #ffffff;
       text-align: center;
       margin: 0;
-      padding: 0;
-      background-color: #ffffff;
+      padding: 20px;
     }
+
     h2 {
-      margin: 30px 0;
+      margin-bottom: 30px;
     }
-    .menu-button {
-      display: block;
+
+    .contact-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       width: 80%;
-      max-width: 300px;
-      margin: 10px auto;
-      padding: 15px;
-      font-size: 16px;
-      font-weight: bold;
-      color: white;
+      max-width: 350px;
+      margin: 15px auto;
+      padding: 10px 15px;
       background-color: #007bff;
-      border: none;
       border-radius: 6px;
-      cursor: pointer;
-      text-decoration: none;
+      color: white;
     }
-    .menu-button:hover {
+
+    .contact-entry:hover {
       background-color: #0056b3;
+    }
+
+    .contact-entry img {
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+    }
+
+    .contact-label {
+      flex-grow: 1;
+      text-align: left;
+    }
+
+    .edit-button {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      flex-grow: 1;
     }
   </style>
 </head>
 <body>
-<h2>Contact People</h2>
-<button onclick="alert('Calling Mom...')"><img src="https://via.placeholder.com/100"> Mom</button><br><br>
-<button onclick="alert('Calling Dad...')"><img src="https://via.placeholder.com/100"> Dad</button><br><br>
-<button onclick="alert('Calling Doctor...')"><img src="https://via.placeholder.com/100"> Doctor</button><br><br>
-<button onclick="alert('Calling Friend...')"><img src="https://via.placeholder.com/100"> Friend</button>
+
+<h2>📞 Contact People</h2>
+
+<div class="contact-entry">
+  <a href="tel:+1234567001">
+    <img src="https://via.placeholder.com/100" alt="Mom">
+    <span class="contact-label" contenteditable="false" id="mom-name">Mom</span>
+  </a>
+  <button class="edit-button" onclick="editName('mom-name')">✏️</button>
+</div>
+
+<div class="contact-entry">
+  <a href="tel:+1234567002">
+    <img src="https://via.placeholder.com/100" alt="Dad">
+    <span class="contact-label" contenteditable="false" id="dad-name">Dad</span>
+  </a>
+  <button class="edit-button" onclick="editName('dad-name')">✏️</button>
+</div>
+
+<div class="contact-entry">
+  <a href="tel:+1234567003">
+    <img src="https://via.placeholder.com/100" alt="Doctor">
+    <span class="contact-label" contenteditable="false" id="doctor-name">Doctor</span>
+  </a>
+  <button class="edit-button" onclick="editName('doctor-name')">✏️</button>
+</div>
+
+<div class="contact-entry">
+  <a href="tel:+1234567004">
+    <img src="https://via.placeholder.com/100" alt="Friend">
+    <span class="contact-label" contenteditable="false" id="friend-name">Friend</span>
+  </a>
+  <button class="edit-button" onclick="editName('friend-name')">✏️</button>
+</div>
+
+<script>
+function editName(id) {
+  const nameSpan = document.getElementById(id);
+  if (nameSpan.isContentEditable) {
+    nameSpan.contentEditable = false;
+    nameSpan.style.backgroundColor = "";
+  } else {
+    nameSpan.contentEditable = true;
+    nameSpan.focus();
+    nameSpan.style.backgroundColor = "#e0e0ff";
+  }
+}
+</script>
+
 </body>
 </html>
+

@@ -1,45 +1,89 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>HappyBot MiniApp</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
       background-color: #ffffff;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
     }
-    h2 {
-      margin: 30px 0;
+
+    header {
+      margin-bottom: 20px;
     }
+
+    header h1 {
+      font-size: 2em;
+      color: #007bff;
+      margin-bottom: 10px;
+    }
+
+    header p {
+      font-size: 1em;
+      color: #555;
+    }
+
+    .menu {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 80%;
+      max-width: 320px;
+    }
+
     .menu-button {
       display: block;
-      width: 80%;
-      max-width: 300px;
-      margin: 10px auto;
       padding: 15px;
       font-size: 16px;
       font-weight: bold;
+      text-align: center;
       color: white;
       background-color: #007bff;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       text-decoration: none;
+      transition: background-color 0.3s ease;
     }
+
     .menu-button:hover {
       background-color: #0056b3;
+    }
+
+    footer {
+      margin-top: 30px;
+      font-size: 0.9em;
+      color: #aaa;
     }
   </style>
 </head>
 <body>
-  <h2>Web Application</h2>
-  <a class="menu-button" href="alerts.html">Set Alerts</a>
-  <a class="menu-button" href="people.html">People</a>
-  <a class="menu-button" href="transfer.html">Transfer Money</a>
-  <a class="menu-button" href="appointments.html">Appointments</a>
-  <a class="menu-button" href="emergency.html">Emergency</a>
+  <header>
+    <h1>Welcome to HappyBot</h1>
+    <p>Your friendly MiniApp assistant</p>
+  </header>
+
+  <div class="menu">
+    <a class="menu-button" href="alerts.html">🔔 Set Alerts</a>
+    <a class="menu-button" href="people.html">👥 People</a>
+    <a class="menu-button" href="transfer.html">💸 Transfer Money</a>
+    <a class="menu-button" href="appointments.html">📅 Appointments</a>
+    <a class="menu-button" href="emergency.html">🚨 Emergency</a>
+  </div>
+
+  <footer>
+    &copy; 2025 HappyBot. All rights reserved.
+  </footer>
 </body>
 </html>
+
