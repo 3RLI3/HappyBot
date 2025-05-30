@@ -43,7 +43,8 @@ def generate_response(query: str, context: str = "general_conversation", user_id
 
         reply = result["choices"][0]["message"]["content"].strip()
         if user_id:
-            append_user_history(user_id, query, reply)
+            append_user_history(user_id, f"User: {query}")
+            append_user_history(user_id, f"Bot: {reply}")
 
         return reply
 

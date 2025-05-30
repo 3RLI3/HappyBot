@@ -38,6 +38,8 @@ def get_user_context(chat_id: int) -> str:
 MAX_HISTORY_LEN = 4
 
 def append_user_history(chat_id: int, message: str):
+    if not isinstance(message, str):
+        raise ValueError("append_user_history expects a string for 'message'")
     if _USE_REDIS:
         key = f"history:{chat_id}"
         _client.rpush(key, message)

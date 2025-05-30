@@ -89,7 +89,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data = update.message.web_app_data.data
         logging.info(f"[handler] received web_app_data: {data!r}")
         await update.message.reply_text(f"🧩 Thanks! You submitted:\n\n`{data}`", parse_mode="Markdown")
-        returnnfo(f"[handler] message: {user_text!r}")
+        return
 
     # Crisis support
     if any(word in user_text.lower() for word in ["suicidal", "hopeless", "depressed", "end it all"]):
@@ -119,7 +119,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ctx = detect_context(user_text)
     logging.info(f"No specific context detected for input: {user_text!r}") if ctx == "general_conversation" else None
     update_user_context(user_id, ctx)
-    append_user_history(user_id, f"User: {user_text}\nBot: {reply}")
+    append_user_history(user_id, f"User: {query}")
+    append_user_history(user_id, f"Bot: {reply}")
     
     try:
         prompt = format_prompt(ctx, user_text, user_id=user_id)
@@ -127,8 +128,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         logging.exception("generate_response failed")
         reply = "😔 Oops! Something went wrong while generating my response. Please try again later."
-
-    append_user_history(user_id, f"Bot: {reply}")
+            append_user_history(user_id, f"Bot: {reply}")
+    
     await update.message.reply_text(f"💬 {reply}")
 
 
@@ -183,7 +184,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.exception("generate_response failed")
         reply = "😔 Oops! Something went wrong while generating my response."
 
-    append_user_history(chat_id, f"User (voice): {user_text}")
+    append_user_history(chat_id, f"User (voice): {text}")
     append_user_history(chat_id, f"Bot: {reply}")
 
     await update.message.reply_text(reply)
@@ -261,6 +262,12 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(CommandHandler("checkin", checkin_command))
 app.add_handler(PollAnswerHandler(handle_poll_answer))
+
+# ── Add error handler to catch uncaught exceptions ─────────────
+if not app.error_handlers:
+    async def error_handler(update, context):
+        logging.exception("Exception while handling update:", exc_info=context.error)
+    app.add_error_handler(error_handler)
 
 # ── Entrypoint ─────────────────────────────────────────────────
 if __name__ == "__main__":
