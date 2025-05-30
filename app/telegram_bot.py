@@ -13,7 +13,6 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-
 # === Custom business logic ===
 import speech_recognition as sr
 from gtts import gTTS
@@ -27,7 +26,7 @@ from app.session_db import update_user_context
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")   # e.g. https://happybot-xusj.onrender.com
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
@@ -49,11 +48,16 @@ def root():
 # --- Telegram PTB Application ---
 application = ApplicationBuilder().token(TOKEN).build()
 
+app_initialized = False
+
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    """This handles Telegram webhook updates."""
+    global app_initialized
     update = Update.de_json(request.get_json(force=True), application.bot)
-    # FIX: Run update handler synchronously per request (safe, reliable)
+    # Initialize PTB app ONCE before first update!
+    if not app_initialized:
+        asyncio.run(application.initialize())
+        app_initialized = True
     asyncio.run(application.process_update(update))
     return jsonify(status="ok")
 
@@ -169,6 +173,6 @@ async def setup_webhook():
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
 
 if __name__ == "__main__":
-    asyncio.run(setup_webhook())
+    asyncio.run(setup_webhook()
     # Optional: for local development only
     # health_app.run(host="0.0.0.0", port=PORT)
