@@ -57,7 +57,7 @@ application = ApplicationBuilder().token(TOKEN).build()
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put(update)
+    application.update_queue.put_nowait(update)
     return jsonify(status="ok")
 
 # === Handlers ===
