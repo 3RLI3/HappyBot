@@ -10,12 +10,11 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
-    PollHandler,
+    PollAnswerHandler,
     ContextTypes,
     filters,
 )
 
-import whisper 
 import speech_recognition as sr
 from gtts import gTTS
 from pydub import AudioSegment
@@ -60,7 +59,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "and I’ll be here to support you 💖",
         parse_mode="Markdown"
     )
-
+    
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text or ""
     user_id = update.effective_chat.id
@@ -99,59 +98,107 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"💬 {reply}")
 
-whisper_model = whisper.load_model("base")
-
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
     tg_file = await voice.get_file()
 
-    # Save incoming OGG file
-    fd, ogg = tempfile.mkstemp(suffix=".ogg"); os.close(fd)
-    await tg_file.download_to_drive(ogg)
+    # Step 1: Save .ogg file
+    fd, ogg_path = tempfile.mkstemp(suffix=".ogg"); os.close(fd)
+    await tg_file.download_to_drive(ogg_path)
 
-    # Convert to WAV (or MP3/MP4/M4A supported by Whisper)
-    wav = ogg.replace(".ogg", ".wav")
-    AudioSegment.from_ogg(ogg).export(wav, format="wav")
-    os.unlink(ogg)
+    # Step 2: Convert to .wav and normalize
+    wav_path = ogg_path.replace(".ogg", ".wav")
+    audio = AudioSegment.from_ogg(ogg_path)
+    normalized = audio.set_frame_rate(16000).set_channels(1).normalize()
+    normalized.export(wav_path, format="wav")
+    os.unlink(ogg_path)
+
+    # Step 3: Recognize speech
+    recog = sr.Recognizer()
+    with sr.AudioFile(wav_path) as src:
+        audio_data = recog.record(src)
 
     try:
-        result = whisper_model.transcribe(wav)
-        text = result.get("text", "").strip()
-    except Exception as e:
-        logging.exception("Whisper transcription failed")
+        text = recog.recognize_sphinx(audio_data)
+    except sr.UnknownValueError:
+        text = ""
+    except sr.RequestError as e:
+        logging.error(f"Sphinx error: {e}")
         text = ""
 
-    os.unlink(wav)
+    os.unlink(wav_path)
 
     if not text:
-        return await update.message.reply_text("Sorry, I couldn't understand your voice. Could you please try again?")
+        return await update.message.reply_text("😕 I couldn’t understand your voice clearly. Try speaking more slowly or clearly.")
 
+    # Step 4: Generate and reply
     ctx = detect_context(text)
     update_user_context(update.effective_chat.id, ctx)
     prompt = format_prompt(ctx, text)
     reply = generate_response(prompt)
 
     await update.message.reply_text(reply)
-
-    # TTS reply
     tts = gTTS(reply)
     with tempfile.NamedTemporaryFile(suffix=".mp3") as mp3_f:
         tts.write_to_fp(mp3_f); mp3_f.flush()
         await update.message.reply_voice(voice=open(mp3_f.name, "rb"))
-        
+
 CHECKIN_Q = "How are you feeling this week?"
 CHECKIN_OPTS = ["Great","Okay","Not so good"]
+
 async def checkin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    context.job_queue.run_weekly(
-        lambda ctx: ctx.bot.send_poll(chat_id, CHECKIN_Q, CHECKIN_OPTS,
-                                      is_anonymous=False, allows_multiple_answers=False),
-        days=0
-    )
-    await update.message.reply_text("✅ Weekly check-in scheduled!")
+    user_first_name = update.effective_user.first_name or "there"
 
-async def poll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.poll.reply_text("Thanks for sharing!")
+    try:
+        context.job_queue.run_weekly(
+            callback=lambda ctx: ctx.bot.send_poll(
+                chat_id=chat_id,
+                question="🧠 *Weekly Check-In*\n\nHow are you feeling this week?",
+                options=["😊 Great", "😐 Okay", "😔 Not so good"],
+                is_anonymous=False,
+                allows_multiple_answers=False,
+                parse_mode="Markdown"
+            ),
+            time=datetime.time(hour=9, minute=0),  # Every Monday at 9:00 AM (server time)
+            days=(0,),  # 0 = Monday
+            name=f"checkin_{chat_id}",
+            chat_id=chat_id
+        )
+
+        await update.message.reply_text(
+            f"✅ Got it, {user_first_name}!\n\nI’ve scheduled a gentle weekly check-in "
+            f"for every *Monday at 9AM*. You'll get a quick wellness poll in this chat. "
+            f"You can always cancel it with /cancelcheckin.",
+            parse_mode="Markdown"
+        )
+
+    except Exception as e:
+        logging.error(f"[checkin_command] Failed to schedule check-in: {e}")
+        await update.message.reply_text(
+            "⚠️ Sorry, something went wrong while setting up your check-in. Please try again later."
+        )
+
+async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.poll_answer.user.id
+    first_name = update.poll_answer.user.first_name or "there"
+    selected_option = update.poll_answer.option_ids[0] if update.poll_answer.option_ids else None
+
+    if selected_option is not None:
+        option_text = ["Great 😊", "Okay 😐", "Not so good 😔"][selected_option]
+        logging.info(f"[poll answer] {first_name} selected: {option_text}")
+
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"💬 Thanks for sharing, {first_name}! You said: *{option_text}*.\n"
+                     f"Feel free to check in with me anytime 💛",
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            logging.warning(f"Couldn't send message to user {user_id}: {e}")
+    else:
+        logging.warning(f"[poll answer] No option selected by user {user_id}"))
 
 # ── Register handlers ───────────────────────────────────────────
 app.add_handler(CommandHandler("start", start_command))
@@ -159,7 +206,7 @@ app.add_handler(CommandHandler("help", help_command))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(CommandHandler("checkin", checkin_command))
-app.add_handler(PollHandler(poll_handler))
+app.add_handler(PollAnswerHandler(handle_poll_answer))
 
 # ── Entrypoint ─────────────────────────────────────────────────
 if __name__ == "__main__":
