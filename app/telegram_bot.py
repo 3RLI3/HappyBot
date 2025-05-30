@@ -58,11 +58,12 @@ logging.info("PTB application initialised ✔")
 def telegram_webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
 
-    # Schedule processing on the long-lived loop, wait until done
-    fut = asyncio.run_coroutine_threadsafe(
-        application.process_update(update), bot_loop
-    )
-    fut.result()          # blocks this request until the handler finishes
+    # hand the work off to the running PTB loop
+    def _run():
+    asyncio.create_task(application.process_update(update), name="tg-update")
+
+    bot_loop.call_soon_threadsafe(_run)
+
     return jsonify(status="ok")
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ application.add_handler(PollHandler(poll_handler))
 async def _set_webhook():
     await application.bot.delete_webhook(drop_pending_updates=True)
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
-    print("✅ Webhook set to", f"{WEBHOOK_URL}/telegram")
+    logging.info("✅ Webhook set")
 
 if __name__ == "__main__":
     import sys
