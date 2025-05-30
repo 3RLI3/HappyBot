@@ -5,7 +5,7 @@ import asyncio
 import datetime
 from dotenv import load_dotenv
 
-from telegram import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -300,8 +300,13 @@ if not app.error_handlers:
     app.add_error_handler(error_handler)
 
 # ── Entrypoint ─────────────────────────────────────────────────
+async def register_webhook():
+    bot = Bot(token=TOKEN)
+    await bot.delete_webhook(drop_pending_updates=True)
+    await bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
+    logging.info(f"✅ Webhook set to {WEBHOOK_URL}/telegram")
+
 if __name__ == "__main__":
-    # app, not application
     logging.info("🚀 HappyBot starting...")
     app.run_webhook(
         listen="0.0.0.0",
@@ -310,3 +315,6 @@ if __name__ == "__main__":
         webhook_url=f"{WEBHOOK_URL}/telegram",
         drop_pending_updates=True,
     )
+
+    # Register webhook after a short delay
+    asyncio.get_event_loop().run_until_complete(register_webhook())
