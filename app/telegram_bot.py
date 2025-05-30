@@ -204,7 +204,7 @@ def main():
 
         await application.initialize()
         await application.start()
-        await application.wait_until_shutdown()
+        await application.idle()  # <== correct for your version
 
     asyncio.run(run_telegram())
 
