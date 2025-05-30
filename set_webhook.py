@@ -15,5 +15,5 @@ bot.delete_webhook(drop_pending_updates=True)
 print("✅ Old webhook deleted, backlog cleared.")
 
 # Set the new webhook
-bot.set_webhook(f"{WEBHOOK_URL}/telegram")
-print(f"✅ Webhook set to {WEBHOOK_URL}/telegram")
+bot.set_webhook(f"{WEBHOOK_URL}")
+print(f"✅ Webhook set to {WEBHOOK_URL}")

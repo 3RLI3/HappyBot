@@ -38,30 +38,65 @@ app = ApplicationBuilder().token(TOKEN).build()
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] start")
     await update.message.reply_text(
-        "👋 Hello! I’m HappyBot, your friendly companion. Type /help to see what I can do."
+        "🌞 *Welcome to HappyBot!*\n\n"
+        "I'm your friendly companion for wellbeing, relaxation, and a little bit of fun. "
+        "Type /help to see everything I can do — or just say hello!",
+        parse_mode="Markdown"
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] help")
     await update.message.reply_text(
-            "/start     – Begin chatting with HappyBot\n"
-            "/help      – Show this help menu\n"
-            "/checkin   – Schedule a weekly wellbeing poll\n"
-            "/exercise  – Watch a short Tai Chi video\n"
-            "/sticker   – Get an exercise sticker\n\n"
-            "You can also send me a voice note and I’ll reply by text and voice!"
+        "📘 *Here’s what I can do:*\n\n"
+        "👉 `/start` – Begin a fresh conversation with HappyBot\n"
+        "❓ `/help` – Show this help menu\n"
+        "🗳️ `/checkin` – Schedule a weekly wellbeing check-in\n"
+        "🎥 `/exercise` – Watch a short Tai Chi video to relax\n"
+        "🌟 `/sticker` – Receive a cheerful sticker reward\n"
+        "🎙️ *Send a voice note* – I’ll transcribe and respond in text + voice\n\n"
+        "💬 You can also just type messages like:\n"
+        "_“I’m feeling down”_ or _“Tell me something uplifting”_\n"
+        "and I’ll be here to support you 💖",
+        parse_mode="Markdown"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text or ""
-    logging.info(f"[handler] message: {text!r}")
+    user_text = update.message.text or ""
+    user_id = update.effective_chat.id
+    logging.info(f"[handler] message: {user_text!r}")
 
-    # Crisis/empathy shortcuts omitted for brevity…
-    ctx = detect_context(text)
-    update_user_context(update.effective_chat.id, ctx)
-    prompt = format_prompt(ctx, text)
-    reply = generate_response(prompt)
-    await update.message.reply_text(reply)
+    # Simple keyword-based emotional shortcuts
+    crisis_words = ["suicidal", "hopeless", "depressed", "end it all"]
+    if any(word in user_text.lower() for word in crisis_words):
+        await update.message.reply_text(
+            "💔 I'm really sorry you're feeling this way. You're not alone.\n\n"
+            "Please consider calling *Samaritans of Singapore* at 📞 *1800-221-4444*, "
+            "or visit https://www.sos.org.sg for help. They’re available 24/7.",
+            parse_mode="Markdown"
+        )
+        return
+
+    empathy_words = ["sad", "lonely", "anxious", "unhappy", "tired"]
+    if any(word in user_text.lower() for word in empathy_words):
+        await update.message.reply_text(
+            "🌧️ I hear you. It’s okay to feel this way sometimes. "
+            "I’m here to chat, share something uplifting, or just listen. 💙\n\n"
+            "Would you like a motivational quote, a breathing exercise, or a fun fact?"
+        )
+        return
+
+    # Context-aware AI reply
+    context_tag = detect_context(user_text)
+    update_user_context(user_id, context_tag)
+    prompt = format_prompt(context_tag, user_text)
+
+    try:
+        reply = generate_response(prompt)
+    except Exception as e:
+        logging.exception("generate_response failed")
+        reply = "Oops! Something went wrong while generating my response. Please try again later."
+
+    await update.message.reply_text(f"💬 {reply}")
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
