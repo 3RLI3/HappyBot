@@ -197,8 +197,7 @@ def main():
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(PollHandler(poll_handler))
-
-    application.run_async()
+ 
 
 if __name__ == "__main__":
     main()
