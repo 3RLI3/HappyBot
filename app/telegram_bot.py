@@ -122,11 +122,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     append_user_history(user_id, f"User: {user_text}")
     
     try:
-        prompt = format_prompt(ctx, user_text, user_id=user_id)
+        logging.info(f"[voice] Transcribed: {text}")
+        logging.info(f"[voice] Context: {ctx}")
+
+        prompt = format_prompt(ctx, text, user_id=chat_id)
         reply = generate_response(prompt)
-    except Exception:
-        logging.exception("generate_response failed")
-        reply = "😔 Oops! Something went wrong while generating my response. Please try again later."
+
+    except Exception as e:
+        logging.exception(f"generate_response failed: {e}")
+        reply = f"😔 I hit an error while replying: {e}"
 
     append_user_history(user_id, f"Bot: {reply}")
     await update.message.reply_text(f"💬 {reply}")
