@@ -119,7 +119,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ctx = detect_context(user_text)
     logging.info(f"No specific context detected for input: {user_text!r}") if ctx == "general_conversation" else None
     update_user_context(user_id, ctx)
-    append_user_history(user_id, f"User: {query}\nBot: {reply}")
+    append_user_history(user_id, f"User: {user_text}\nBot: {reply}")
     
     try:
         prompt = format_prompt(ctx, user_text, user_id=user_id)
