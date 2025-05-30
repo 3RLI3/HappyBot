@@ -179,13 +179,9 @@ application.add_handler(PollHandler(poll_handler))
 async def _set_webhook():
     await application.bot.delete_webhook(drop_pending_updates=True)
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
-    logging.info("Webhook set to %s/telegram", WEBHOOK_URL)
+    print("✅ Webhook set to", f"{WEBHOOK_URL}/telegram")
 
 if __name__ == "__main__":
-    # Local dev helper:  python -m app.telegram_bot --set-webhook
     import sys
     if "--set-webhook" in sys.argv:
         bot_loop.run_until_complete(_set_webhook())
-    else:
-        # run Flask dev server
-        health_app.run(host="0.0.0.0", port=PORT, debug=True)
