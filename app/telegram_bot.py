@@ -96,7 +96,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         prompt = format_prompt(ctx, user_text, user_id=user_id)
-        reply = generate_response(user_text, context=ctx, user_id=update.effective_chat.id)  # ✅ FIXED HERE
+        reply = generate_response(prompt)
     except Exception:
         logging.exception("generate_response failed")
         reply = "😔 Oops! Something went wrong while generating my response. Please try again later."
