@@ -71,18 +71,25 @@ application.add_error_handler(log_ptb_error)
 # ── Flask webhook route ───────────────────────────────────────────────────────
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
+    data = request.get_json(force=True)
+    print("[webhook] raw update:", data, flush=True)
 
-    # hand the coroutine to PTB's event-loop in a safe way
+    try:
+        update = Update.de_json(data, application.bot)
+    except Exception:
+        print("[webhook] failed to parse Update", flush=True)
+        return jsonify(status="bad update"), 400
+
     fut = asyncio.run_coroutine_threadsafe(
         application.process_update(update), bot_loop
     )
+    print("[webhook] scheduled process_update()", flush=True)
 
-    # optional: log exceptions that happen inside the handler
     def _done(f):
-        exc = f.exception()
-        if exc:
-            logging.exception("handler failed", exc_info=exc)
+        if f.exception():
+            print("[webhook] process_update threw:", f.exception(), flush=True)
+        else:
+            print("[webhook] process_update complete", flush=True)
     fut.add_done_callback(_done)
 
     return jsonify(status="ok")
@@ -91,11 +98,15 @@ def telegram_webhook():
 
 # ── Telegram handlers (unchanged) ─────────────────────────────────────────────
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info("[handler:start] start_command invoked")
+    print("[handler] start_command hit", flush=True)
     await update.message.reply_text(
         "👋 Hello! I’m HappyBot, , your friendly companion. Type /help to see what I can do."
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info("[handler:help] help_command invoked")
+    print("[handler] handle_message text =", update.message.text, flush=True)
     await update.message.reply_text(
         "/start     – Begin chatting with HappyBot\n"
         "/help      – Show this help menu\n"
@@ -106,6 +117,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"[handler:message] text={update.message.text!r}")
     text = update.message.text or ""
     uid = update.effective_chat.id
 
@@ -188,9 +200,15 @@ async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE
     video_url = os.getenv("EXERCISE_VIDEO_URL")
     await update.message.reply_video(video=video_url, caption="🧘‍♂️ Try this Tai Chi routine!")
 
+async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.warning(f"[handler:fallback] Unhandled update: {update}")
+    if update.effective_message:
+        await update.effective_message.reply_text("🤔 I didn’t understand that.")
+
 # === Register handlers ===
 application.add_handler(CommandHandler("start", start_command))
 application.add_handler(CommandHandler("help", help_command))
+application.add_handler(MessageHandler(filters.ALL, fallback))
 application.add_handler(CommandHandler("checkin", checkin_command))
 application.add_handler(CommandHandler("sticker", send_sticker))
 application.add_handler(CommandHandler("exercise", send_exercise_video))
