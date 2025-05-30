@@ -38,7 +38,7 @@ PORT        = int(os.getenv("PORT", "10000"))
 # ── Build the PTB application ─────────────────────────────────
 app = ApplicationBuilder().token(TOKEN).build()
 
-@health_app.route("/healthz")
+@app.route("/healthz")
 def healthz():
     """Health check endpoint to verify service and Redis connectivity."""
     try:
@@ -48,11 +48,11 @@ def healthz():
         pass
     return jsonify(status="ok"), 200
 
-@health_app.route("/miniapp/<path:filename>")
+@app.route("/miniapp/<path:filename>")
 def serve_miniapp(filename):
     return send_from_directory(STATIC_DIR, filename)
 
-@health_app.route("/")
+@app.route("/")
 def root():
     """Redirect root to /healthz for easy monitoring."""
     return redirect("/healthz")
