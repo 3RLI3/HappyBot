@@ -30,6 +30,9 @@ logging.basicConfig(level=logging.WARNING)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
+FLASK_PORT = int(os.getenv("FLASK_PORT", 10000))  # your miniapp + healthz
+BOT_PORT = int(os.getenv("BOT_PORT", 8443))       # PTB webhook
+
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
 # Flask app for health checks and webhook endpoint
@@ -175,21 +178,25 @@ async def set_webhook():
 
 # Create the Telegram application
 def main():
-    port = int(os.getenv("PORT", 10000))
+    # Read from env or use defaults
+    FLASK_PORT = int(os.getenv("FLASK_PORT", 10000))   # Flask port (static files, healthz)
+    BOT_PORT = int(os.getenv("BOT_PORT", 8443))        # PTB webhook port
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")             # e.g., "https://happybot.onrender.com"
 
-    # Start Flask app (health checks, miniapp)
+    # Start Flask (runs in background)
     threading.Thread(
-        target=lambda: health_app.run(host="0.0.0.0", port=port),
+        target=lambda: health_app.run(host="0.0.0.0", port=FLASK_PORT),
         daemon=True
     ).start()
 
+    # Create Telegram bot application
     application = (
         ApplicationBuilder()
         .token(os.getenv("TELEGRAM_TOKEN"))
         .build()
     )
 
-    # Register handlers
+    # Add command and message handlers
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("checkin", checkin_command))
@@ -199,12 +206,13 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(PollHandler(poll_handler))
 
-    # Start webhook
+    # Run PTB webhook
     application.run_webhook(
         listen="0.0.0.0",
-        port=port,
+        port=BOT_PORT,
         url_path="/telegram",
-        webhook_url=os.getenv("WEBHOOK_URL") + "/telegram"
+        webhook_url=f"{WEBHOOK_URL}/telegram",
+        on_startup=on_startup
     )
 
 if __name__ == "__main__":
