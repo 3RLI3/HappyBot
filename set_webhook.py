@@ -13,7 +13,7 @@ async def main():
     bot = Bot(token=TOKEN)
     await bot.delete_webhook(drop_pending_updates=True)
     print("✅ Old webhook deleted, backlog cleared.")
-    await bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
+    await bot.set_webhook(url=f"{WEBHOOK_URL}")
     print(f"✅ Webhook set to {WEBHOOK_URL}/telegram")
 
 if __name__ == "__main__":
