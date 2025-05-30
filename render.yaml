@@ -14,7 +14,7 @@ services:
     sync: false
   region: singapore
   buildCommand: pip install -r requirements.txt
-  startCommand: gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --capture-output --log-level debug
+  startCommand: python -m app.telegram_bot
   autoDeployTrigger: commit
 version: "1"
 
