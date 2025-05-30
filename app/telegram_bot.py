@@ -173,6 +173,6 @@ async def setup_webhook():
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
 
 if __name__ == "__main__":
-    asyncio.run(setup_webhook()
+    asyncio.run(setup_webhook())
     # Optional: for local development only
     # health_app.run(host="0.0.0.0", port=PORT)
