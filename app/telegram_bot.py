@@ -127,9 +127,10 @@ web_app.router.add_get("/healthz", health)
 
 # ── Entrypoint ─────────────────────────────────────────────────
 if __name__ == "__main__":
-    logging.info("Starting webhook server on 0.0.0.0:%s…", PORT)
-    web.run_app(
-        web_app,
-        host="0.0.0.0",
-        port=PORT
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path="/telegram",                       # the route
+        webhook_url=f"{WEBHOOK_URL}/telegram",
+        drop_pending_updates=True,
     )
