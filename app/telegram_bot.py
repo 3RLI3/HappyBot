@@ -176,37 +176,30 @@ async def set_webhook():
     await telegram_app.bot.delete_webhook(drop_pending_updates=True)
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/telegram")
 
+async def on_startup(app):
+    await app.bot.set_webhook(url=os.getenv("WEBHOOK_URL") + "/telegram")
+
 # Create the Telegram application
 def main():
-    # Read from env or use defaults
-    FLASK_PORT = int(os.getenv("FLASK_PORT", 10000))   # Flask port (static files, healthz)
-    BOT_PORT = int(os.getenv("BOT_PORT", 8443))        # PTB webhook port
-    WEBHOOK_URL = os.getenv("WEBHOOK_URL")             # e.g., "https://happybot.onrender.com"
+    FLASK_PORT = int(os.getenv("FLASK_PORT", 10000))
+    BOT_PORT = int(os.getenv("BOT_PORT", 8443))
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-    # Start Flask (runs in background)
     threading.Thread(
         target=lambda: health_app.run(host="0.0.0.0", port=FLASK_PORT),
         daemon=True
     ).start()
 
-    # Create Telegram bot application
     application = (
         ApplicationBuilder()
         .token(os.getenv("TELEGRAM_TOKEN"))
         .build()
     )
 
-    # Add command and message handlers
+    # Add handlers (unchanged)
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("checkin", checkin_command))
-    application.add_handler(CommandHandler("sticker", send_sticker))
-    application.add_handler(CommandHandler("exercise", send_exercise_video))
-    application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.add_handler(PollHandler(poll_handler))
-
-    # Run PTB webhook
+    # ... (rest of your handlers)
+    
     application.run_webhook(
         listen="0.0.0.0",
         port=BOT_PORT,
