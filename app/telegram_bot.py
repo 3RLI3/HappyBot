@@ -174,37 +174,38 @@ async def set_webhook():
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/telegram")
 
 # Create the Telegram application
-def start_flask():
+def main():
     port = int(os.getenv("PORT", 10000))
-    health_app.run(host="0.0.0.0", port=port)
 
-async def main():
-    # Start Flask server in a thread
-    threading.Thread(target=start_flask, daemon=True).start()
+    # Start Flask app (health checks, miniapp)
+    threading.Thread(
+        target=lambda: health_app.run(host="0.0.0.0", port=port),
+        daemon=True
+    ).start()
 
-    telegram_app = (
+    application = (
         ApplicationBuilder()
         .token(os.getenv("TELEGRAM_TOKEN"))
         .build()
     )
 
     # Register handlers
-    telegram_app.add_handler(CommandHandler("start", start_command))
-    telegram_app.add_handler(CommandHandler("help", help_command))
-    telegram_app.add_handler(CommandHandler("checkin", checkin_command))
-    telegram_app.add_handler(CommandHandler("sticker", send_sticker))
-    telegram_app.add_handler(CommandHandler("exercise", send_exercise_video))
-    telegram_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    telegram_app.add_handler(PollHandler(poll_handler))
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("checkin", checkin_command))
+    application.add_handler(CommandHandler("sticker", send_sticker))
+    application.add_handler(CommandHandler("exercise", send_exercise_video))
+    application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(PollHandler(poll_handler))
 
-    # Run polling (requires to be awaited)
-    await telegram_app.initialize()
-    await telegram_app.start()
-    await telegram_app.updater.start_polling()
-    await telegram_app.updater.wait()
-    await telegram_app.stop()
-    await telegram_app.shutdown()
+    # Start webhook
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path="/telegram",
+        webhook_url=os.getenv("WEBHOOK_URL") + "/telegram"
+    )
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
