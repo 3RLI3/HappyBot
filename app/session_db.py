@@ -18,7 +18,7 @@ except Exception:
         "context": {},  # for storing context tags like "health_wellness"
         "history": {}   # for storing conversation history
     }
-ddef update_user_context(chat_id: int, context: str):
+def update_user_context(chat_id: int, context: str):
     key = f"context:{chat_id}"
     if _USE_REDIS:
         _client.set(key, context)
