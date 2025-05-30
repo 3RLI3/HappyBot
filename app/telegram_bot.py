@@ -171,13 +171,5 @@ async def setup_webhook():
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
 
-@health_app.before_serving
-def init_webhook_on_start():
-    # This runs once per worker at startup (Flask 2.0+)
-    try:
-        asyncio.get_event_loop().run_until_complete(setup_webhook())
-    except RuntimeError:
-        asyncio.run(setup_webhook())
-
 # ---- NO __main__ block for production Gunicorn ----
 # Gunicorn runs: gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --workers=1
