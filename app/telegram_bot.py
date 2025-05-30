@@ -188,12 +188,12 @@ async def poll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send an exercise sticker."""
-    sticker_id = os.getenv("EXERCISE_STICKER_ID")
+    sticker_id = os.getenv("static/exercise_sticker_id.png")
     await update.message.reply_sticker(sticker=sticker_id)
 
 async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a Tai Chi exercise video snippet."""
-    video_url = os.getenv("EXERCISE_VIDEO_URL")
+    video_url = os.getenv("https://www.youtube.com/watch?v=y2RAEnWreoE&t=6s")
     await update.message.reply_video(video=video_url, caption="🧘‍♂️ Try this Tai Chi routine!")
 
 
