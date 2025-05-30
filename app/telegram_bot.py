@@ -149,7 +149,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not text:
         await update.message.reply_text("Sorry, I couldn't understand your voice. Could you please try again?")
         return
-    ctx = detect_context(text)
+    context = detect_context(text)
     update_user_context(update.effective_chat.id, ctx)
     prompt = format_prompt(ctx, text)
     reply = generate_response(prompt)
