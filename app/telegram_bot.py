@@ -137,44 +137,65 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_file = await voice.get_file()
 
     # Step 1: Save .ogg file
-    fd, ogg_path = tempfile.mkstemp(suffix=".ogg"); os.close(fd)
+    fd, ogg_path = tempfile.mkstemp(suffix=".ogg")
+    os.close(fd)
     await tg_file.download_to_drive(ogg_path)
 
     # Step 2: Convert to .wav and normalize
     wav_path = ogg_path.replace(".ogg", ".wav")
-    audio = AudioSegment.from_ogg(ogg_path)
-    normalized = audio.set_frame_rate(16000).set_channels(1).normalize()
-    normalized.export(wav_path, format="wav")
-    os.unlink(ogg_path)
+    try:
+        audio = AudioSegment.from_ogg(ogg_path)
+        normalized = audio.set_frame_rate(16000).set_channels(1).normalize()
+        normalized.export(wav_path, format="wav")
+    except Exception as e:
+        logging.error(f"Audio conversion error: {e}")
+        return await update.message.reply_text("⚠️ Sorry, I couldn't process your voice message.")
+    finally:
+        os.unlink(ogg_path)
 
     # Step 3: Recognize speech
     recog = sr.Recognizer()
-    with sr.AudioFile(wav_path) as src:
-        audio_data = recog.record(src)
-
     try:
+        with sr.AudioFile(wav_path) as src:
+            audio_data = recog.record(src)
         text = recog.recognize_sphinx(audio_data)
     except sr.UnknownValueError:
         text = ""
     except sr.RequestError as e:
         logging.error(f"Sphinx error: {e}")
         text = ""
-
-    os.unlink(wav_path)
+    finally:
+        os.unlink(wav_path)
 
     if not text:
-        return await update.message.reply_text("😕 I couldn’t understand your voice clearly. Try speaking more slowly or clearly.")
+        return await update.message.reply_text(
+            "😕 I couldn’t understand your voice clearly. Try speaking more slowly or clearly."
+        )
 
     # Step 4: Generate and reply
+    chat_id = update.effective_chat.id
     ctx = detect_context(text)
-    update_user_context(update.effective_chat.id, ctx)
-    reply = generate_response(user_text, context=context_tag, user_id=user_id)
+    update_user_context(chat_id, ctx)
+
+    try:
+        reply = generate_response(text, context=ctx, user_id=chat_id)
+    except Exception as e:
+        logging.exception("generate_response failed")
+        reply = "😔 Oops! Something went wrong while generating my response."
+
+    append_user_history(chat_id, f"User (voice): {text}")
+    append_user_history(chat_id, f"Bot: {reply}")
 
     await update.message.reply_text(reply)
-    tts = gTTS(reply)
-    with tempfile.NamedTemporaryFile(suffix=".mp3") as mp3_f:
-        tts.write_to_fp(mp3_f); mp3_f.flush()
-        await update.message.reply_voice(voice=open(mp3_f.name, "rb"))
+
+    try:
+        tts = gTTS(reply)
+        with tempfile.NamedTemporaryFile(suffix=".mp3") as mp3_f:
+            tts.write_to_fp(mp3_f)
+            mp3_f.flush()
+            await update.message.reply_voice(voice=open(mp3_f.name, "rb"))
+    except Exception as e:
+        logging.warning(f"Failed to send TTS voice message: {e}")
 
 CHECKIN_Q = "How are you feeling this week?"
 CHECKIN_OPTS = ["Great","Okay","Not so good"]
