@@ -1,4 +1,5 @@
 import os
+import asyncio
 import threading
 import logging
 import tempfile
@@ -161,11 +162,11 @@ async def poll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text("Thanks for sharing! Talk again next week.")
 
 async def send_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    sticker_id = os.getenv("EXERCISE_STICKER_ID")
+    sticker_id = os.getenv("static/exercise_sticker_id.png")
     await update.message.reply_sticker(sticker=sticker_id)
 
 async def send_exercise_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    video_url = os.getenv("EXERCISE_VIDEO_URL")
+    video_url = os.getenv("https://www.youtube.com/watch?v=y2RAEnWreoE")
     await update.message.reply_video(video=video_url, caption="\U0001F9D8\u200D♂\ufe0f Try this Tai Chi routine!")
 
 async def on_startup(application):
@@ -181,24 +182,33 @@ def main():
         daemon=True
     ).start()
 
-    application = (
-        ApplicationBuilder()
-        .token(TOKEN)
-        .post_init(on_startup)
-        .build()
-    )
-    bot = application.bot
+    async def run_telegram():
+        global application, bot
 
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("checkin", checkin_command))
-    application.add_handler(CommandHandler("sticker", send_sticker))
-    application.add_handler(CommandHandler("exercise", send_exercise_video))
-    application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.add_handler(PollHandler(poll_handler))
- 
+        application = (
+            ApplicationBuilder()
+            .token(TOKEN)
+            .post_init(on_startup)
+            .build()
+        )
+        bot = application.bot
+
+        application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("checkin", checkin_command))
+        application.add_handler(CommandHandler("sticker", send_sticker))
+        application.add_handler(CommandHandler("exercise", send_exercise_video))
+        application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        application.add_handler(PollHandler(poll_handler))
+
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling()  # or skip if you only use webhooks
+        await application.updater.idle()
+
+    asyncio.run(run_telegram())
 
 if __name__ == "__main__":
     main()
-
+ 
