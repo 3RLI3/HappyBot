@@ -15,6 +15,7 @@ from telegram.ext import (
     filters,
 )
 
+import whisper 
 import speech_recognition as sr
 from gtts import gTTS
 from pydub import AudioSegment
@@ -98,34 +99,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"💬 {reply}")
 
+whisper_model = whisper.load_model("base")
+
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
     tg_file = await voice.get_file()
+
+    # Save incoming OGG file
     fd, ogg = tempfile.mkstemp(suffix=".ogg"); os.close(fd)
     await tg_file.download_to_drive(ogg)
+
+    # Convert to WAV (or MP3/MP4/M4A supported by Whisper)
     wav = ogg.replace(".ogg", ".wav")
     AudioSegment.from_ogg(ogg).export(wav, format="wav")
     os.unlink(ogg)
 
-    recog = sr.Recognizer()
-    with sr.AudioFile(wav) as src:
-        audio = recog.record(src)
     try:
-        text = recog.recognize_sphinx(audio)
-    except sr.UnknownValueError:
+        result = whisper_model.transcribe(wav)
+        text = result.get("text", "").strip()
+    except Exception as e:
+        logging.exception("Whisper transcription failed")
         text = ""
+
+    os.unlink(wav)
+
     if not text:
-        return await update.message.reply_text("Sorry, couldn't understand your voice.")
+        return await update.message.reply_text("Sorry, I couldn't understand your voice. Could you please try again?")
+
     ctx = detect_context(text)
     update_user_context(update.effective_chat.id, ctx)
     prompt = format_prompt(ctx, text)
     reply = generate_response(prompt)
+
     await update.message.reply_text(reply)
+
+    # TTS reply
     tts = gTTS(reply)
     with tempfile.NamedTemporaryFile(suffix=".mp3") as mp3_f:
         tts.write_to_fp(mp3_f); mp3_f.flush()
         await update.message.reply_voice(voice=open(mp3_f.name, "rb"))
-
+        
 CHECKIN_Q = "How are you feeling this week?"
 CHECKIN_OPTS = ["Great","Okay","Not so good"]
 async def checkin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -14,7 +14,7 @@ services:
     sync: false
   region: singapore
   buildCommand: pip install -r requirements.txt
-  startCommand: python -m app.telegram_bot
+  startCommand: python set_webhook.py && python -m app.telegram_bot
   autoDeployTrigger: commit
 version: "1"
 
