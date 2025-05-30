@@ -119,17 +119,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ctx = detect_context(user_text)
     logging.info(f"No specific context detected for input: {user_text!r}") if ctx == "general_conversation" else None
     update_user_context(user_id, ctx)
-    append_user_history(user_id, f"User: {query}")
-    append_user_history(user_id, f"Bot: {reply}")
     
     try:
-        prompt = format_prompt(ctx, user_text, user_id=user_id)
-        reply = generate_response(prompt)
+        reply = generate_response(user_text, context=ctx, user_id=user_id)
     except Exception:
         logging.exception("generate_response failed")
         reply = "😔 Oops! Something went wrong while generating my response. Please try again later."
-        append_user_history(user_id, f"Bot: {reply}")
-    
+
+    append_user_history(user_id, f"User: {user_text}")
+    append_user_history(user_id, f"Bot: {reply}")
+
     await update.message.reply_text(f"💬 {reply}")
 
 
