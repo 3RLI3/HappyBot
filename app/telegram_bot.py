@@ -4,7 +4,6 @@ import tempfile
 import asyncio
 
 from dotenv import load_dotenv
-from aiohttp import web
 
 from telegram import Update
 from telegram.ext import (
@@ -114,23 +113,13 @@ app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(CommandHandler("checkin", checkin_command))
 app.add_handler(PollHandler(poll_handler))
 
-# ── Build an aiohttp Web App for both /telegram & /healthz ──────
-web_app = app.build_webhook_app(
-    path="/telegram",             # route for Telegram POSTs
-    drop_pending_updates=True
-)
-
-async def health(request):
-    return web.json_response({"status": "ok"})
-
-web_app.router.add_get("/healthz", health)
-
 # ── Entrypoint ─────────────────────────────────────────────────
 if __name__ == "__main__":
-    application.run_webhook(
+    # app, not application
+    app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
-        url_path="/telegram",                       # the route
+        url_path="/telegram",
         webhook_url=f"{WEBHOOK_URL}/telegram",
         drop_pending_updates=True,
     )
