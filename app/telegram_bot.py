@@ -30,6 +30,8 @@ load_dotenv()
 logging.basicConfig(level=logging.WARNING)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
+STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
+
 # Flask app for health checks
 health_app = Flask(__name__, static_folder="../static")
 
@@ -45,7 +47,7 @@ def healthz():
 
 @health_app.route("/miniapp/<path:filename>")
 def serve_miniapp(filename):
-    return send_from_directory("../static/miniapp", filename)
+    return send_from_directory(STATIC_DIR, filename)
 
 @health_app.route("/")
 def root():
