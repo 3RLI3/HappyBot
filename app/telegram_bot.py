@@ -46,7 +46,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("[handler] /start")
 
     # URL must match the domain registered in BotFather
-    miniapp_url = f"{send_from_directory(STATIC_DIR, filename)}"
+    miniapp_url = f"{WEBHOOK_URL}/static/miniapp/index.html"
 
     # Button that launches the Telegram Mini App
     keyboard = [
@@ -307,6 +307,6 @@ if __name__ == "__main__":
         listen="0.0.0.0",
         port=PORT,
         url_path="/telegram",
-        webhook_url=f"{WEBHOOK_URL}",
+        webhook_url=f"{WEBHOOK_URL}/telegram",
         drop_pending_updates=True,
     )
