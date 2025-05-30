@@ -69,9 +69,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
     logging.info(f"[handler] message: {user_text!r}")
 
-    # 🛑 Crisis keyword check
-    crisis_words = ["suicidal", "hopeless", "depressed", "end it all"]
-    if any(word in user_text.lower() for word in crisis_words):
+    # Crisis support
+    if any(word in user_text.lower() for word in ["suicidal", "hopeless", "depressed", "end it all"]):
         await update.message.reply_text(
             "💔 I'm really sorry you're feeling this way. You're not alone.\n\n"
             "Please consider calling *Samaritans of Singapore* at 📞 *1800-221-4444*, "
@@ -80,9 +79,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 💬 Empathy keyword check
-    empathy_words = ["sad", "lonely", "anxious", "unhappy", "tired"]
-    if any(word in user_text.lower() for word in empathy_words):
+    # Empathy support
+    if any(word in user_text.lower() for word in ["sad", "lonely", "anxious", "unhappy", "tired"]):
         await update.message.reply_text(
             "🌧️ I hear you. It’s okay to feel this way sometimes. "
             "I’m here to chat, share something uplifting, or just listen. 💙\n\n"
@@ -90,28 +88,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 🧠 Detect context and update
-    context_tag = detect_context(user_text)
-    update_user_context(user_id, context_tag)
-
-    # 🗂️ Log user message to history
+    # Context-based response
+    ctx = detect_context(user_text)
+    logging.info(f"No specific context detected for input: {user_text!r}") if ctx == "general_conversation" else None
+    update_user_context(user_id, ctx)
     append_user_history(user_id, f"User: {user_text}")
-
-    # 🧾 Format AI prompt with conversation history
-    prompt = format_prompt(context_tag, user_text, user_id=user_id)
-
-    # 🤖 Generate response
+    
     try:
-        reply = generate_response(text, context=ctx, user_id=update.effective_chat.id)
-    except Exception as e:
+        prompt = format_prompt(ctx, user_text, user_id=user_id)
+        reply = generate_response(user_text, context=ctx, user_id=update.effective_chat.id)  # ✅ FIXED HERE
+    except Exception:
         logging.exception("generate_response failed")
-        reply = "Oops! Something went wrong while generating my response. Please try again later."
+        reply = "😔 Oops! Something went wrong while generating my response. Please try again later."
 
-    # 📚 Add response to history
     append_user_history(user_id, f"Bot: {reply}")
-
-    # 📤 Send reply
     await update.message.reply_text(f"💬 {reply}")
+
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
