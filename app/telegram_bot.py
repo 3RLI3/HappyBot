@@ -25,9 +25,9 @@ from app.session_db import update_user_context
 
 # === ENV ===
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # e.g. "https://happybot-xusj.onrender.com"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 
@@ -56,12 +56,8 @@ application = ApplicationBuilder().token(TOKEN).build()
 
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
-    try:
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        application.update_queue.put_nowait(update)
-        logging.info("Received Telegram update: %s", update)
-    except Exception as e:
-        logging.error(f"Error handling Telegram update: {e}")
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
     return jsonify(status="ok")
 
 # === Handlers ===
@@ -170,23 +166,18 @@ application.add_handler(MessageHandler(filters.VOICE, handle_voice))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 application.add_handler(PollHandler(poll_handler))
 
-# === Webhook setup for Gunicorn/Render ===
+# --- ASYNC Webhook Setup for Gunicorn/Flask 3.x ---
 async def setup_webhook():
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/telegram")
 
-# === Flask Startup Hook for Gunicorn ===
-@health_app.before_first_request
-def _init_telegram_webhook():
-    # This runs in Gunicorn worker when the first request is received
-    logging.info("Setting Telegram webhook")
+@health_app.before_serving
+def init_webhook_on_start():
+    # This runs once per worker at startup (Flask 2.0+)
     try:
         asyncio.get_event_loop().run_until_complete(setup_webhook())
     except RuntimeError:
         asyncio.run(setup_webhook())
 
-# === Production ===
-# DO NOT start Flask with .run()! Gunicorn runs it for you.
-
-# Gunicorn command in Render should be:
-# gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --workers=1
+# ---- NO __main__ block for production Gunicorn ----
+# Gunicorn runs: gunicorn -b 0.0.0.0:$PORT app.telegram_bot:health_app --workers=1
