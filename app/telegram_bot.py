@@ -59,12 +59,11 @@ application = ApplicationBuilder().token(TOKEN).build()
 def telegram_webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, application.bot)
-    # PTB v20+ update processing is now async: schedule in event loop!
-    # If running with Gunicorn (sync), you must use create_task.
-    # This fires-and-forgets update handling, non-blocking for Flask.
+    # Run the coroutine in a new event loop for each request
     import asyncio
-    asyncio.get_event_loop().create_task(application.process_update(update))
+    asyncio.run(application.process_update(update))
     return jsonify(status="ok")
+
 
 # === Telegram Handlers ===
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
