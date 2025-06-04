@@ -32,6 +32,7 @@ logging.basicConfig(level=logging.WARNING)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
+telegram_application = None
 
 # Flask app for health checks
 health_app = Flask(__name__, static_folder="../static")
@@ -55,11 +56,20 @@ def root():
     """Redirect root to /healthz for easy monitoring."""
     return redirect("/healthz")
 
-# @health_app.route("/telegram", methods=["POST"])
-# def telegram_webhook():
-#     """Entry point for Telegram webhook (Render will POST updates here)."""
-#     from app.telegram_bot import app as telegram_app
-#     return telegram_app.update_queue.put_nowait(request.get_json(force=True)) or '', 200
+@health_app.route("/telegram", methods=["POST"])
+def telegram_webhook():
+    """Webhook endpoint to receive Telegram updates."""
+    global telegram_application
+    if telegram_application is None:
+        return "Telegram application not initialized", 500
+
+    try:
+        telegram_application.update_queue.put_nowait(request.get_json(force=True))
+        return '', 200
+    except Exception as e:
+        logging.error("Failed to enqueue Telegram update: %s", e)
+        return 'Failed to process update', 500
+        
 # # === Command Handlers ===
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -213,29 +223,31 @@ def main():
     threading.Thread(target=lambda: health_app.run(host="0.0.0.0", port=port), daemon=True).start()
 
     async def launch():
-        application = (
-            ApplicationBuilder()
-            .token(TOKEN)
-            .post_init(on_startup)
-            .build()
-        )
+    global telegram_application  # reference the global variable
 
-        application.add_handler(CommandHandler("start", start_command))
-        application.add_handler(CommandHandler("help", help_command))
-        application.add_handler(CommandHandler("checkin", checkin_command))
-        application.add_handler(CommandHandler("sticker", send_sticker))
-        application.add_handler(CommandHandler("exercise", send_exercise_video))
-        application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-        application.add_handler(PollHandler(poll_handler))
+    telegram_application = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .post_init(on_startup)
+        .build()
+    )
 
-        await application.initialize()
-        await application.start()
-        await application.bot.set_webhook(url=os.getenv("WEBHOOK_URL"))
-        print("✅ Webhook set.")
-        await asyncio.Event().wait()
+    telegram_application.add_handler(CommandHandler("start", start_command))
+    telegram_application.add_handler(CommandHandler("help", help_command))
+    telegram_application.add_handler(CommandHandler("checkin", checkin_command))
+    telegram_application.add_handler(CommandHandler("sticker", send_sticker))
+    telegram_application.add_handler(CommandHandler("exercise", send_exercise_video))
+    telegram_application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    telegram_application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    telegram_application.add_handler(PollHandler(poll_handler))
 
-    asyncio.run(launch())
+    await telegram_application.initialize()
+    await telegram_application.start()
+    await telegram_application.bot.set_webhook(url=os.getenv("WEBHOOK_URL"))
+    print("✅ Webhook set.")
+    await asyncio.Event().wait()
+
+    # asyncio.run(launch())
     
 if __name__ == "__main__":
     main()
