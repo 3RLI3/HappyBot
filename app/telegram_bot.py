@@ -220,25 +220,22 @@ def main():
             .build()
         )
 
-    # 3) Add your command / message handlers…
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("checkin", checkin_command))
-    app.add_handler(CommandHandler("sticker", send_sticker))
-    app.add_handler(CommandHandler("exercise", send_exercise_video))
-    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(PollHandler(poll_handler))
-    # Start long polling, dropping any stale updates on the server
-    app.run_polling(drop_pending_updates=True)
+        application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("checkin", checkin_command))
+        application.add_handler(CommandHandler("sticker", send_sticker))
+        application.add_handler(CommandHandler("exercise", send_exercise_video))
+        application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        application.add_handler(PollHandler(poll_handler))
 
-    await application.initialize()
+        await application.initialize()
         await application.start()
         await application.bot.set_webhook(url=os.getenv("WEBHOOK_URL"))
         print("✅ Webhook set.")
         await asyncio.Event().wait()
 
     asyncio.run(launch())
-
+    
 if __name__ == "__main__":
     main()
