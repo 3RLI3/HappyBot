@@ -223,31 +223,31 @@ def main():
     threading.Thread(target=lambda: health_app.run(host="0.0.0.0", port=port), daemon=True).start()
 
     async def launch():
-    global telegram_application  # reference the global variable
+        global telegram_application  # <-- this line must be indented
 
-    telegram_application = (
-        ApplicationBuilder()
-        .token(TOKEN)
-        .post_init(on_startup)
-        .build()
-    )
+        telegram_application = (
+            ApplicationBuilder()
+            .token(TOKEN)
+            .post_init(on_startup)
+            .build()
+        )
 
-    telegram_application.add_handler(CommandHandler("start", start_command))
-    telegram_application.add_handler(CommandHandler("help", help_command))
-    telegram_application.add_handler(CommandHandler("checkin", checkin_command))
-    telegram_application.add_handler(CommandHandler("sticker", send_sticker))
-    telegram_application.add_handler(CommandHandler("exercise", send_exercise_video))
-    telegram_application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    telegram_application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    telegram_application.add_handler(PollHandler(poll_handler))
+        telegram_application.add_handler(CommandHandler("start", start_command))
+        telegram_application.add_handler(CommandHandler("help", help_command))
+        telegram_application.add_handler(CommandHandler("checkin", checkin_command))
+        telegram_application.add_handler(CommandHandler("sticker", send_sticker))
+        telegram_application.add_handler(CommandHandler("exercise", send_exercise_video))
+        telegram_application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+        telegram_application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        telegram_application.add_handler(PollHandler(poll_handler))
 
-    await telegram_application.initialize()
-    await telegram_application.start()
-    await telegram_application.bot.set_webhook(url=os.getenv("WEBHOOK_URL"))
-    print("✅ Webhook set.")
-    await asyncio.Event().wait()
+        await telegram_application.initialize()
+        await telegram_application.start()
+        await telegram_application.bot.set_webhook(url=os.getenv("WEBHOOK_URL"))
+        print("✅ Webhook set.")
+        await asyncio.Event().wait()
 
-    # asyncio.run(launch())
+    asyncio.run(launch())  
     
 if __name__ == "__main__":
     main()
