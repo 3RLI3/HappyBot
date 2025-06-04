@@ -55,12 +55,12 @@ def root():
     """Redirect root to /healthz for easy monitoring."""
     return redirect("/healthz")
 
-@health_app.route("/telegram", methods=["POST"])
-def telegram_webhook():
-    """Entry point for Telegram webhook (Render will POST updates here)."""
-    from app.telegram_bot import app as telegram_app
-    return telegram_app.update_queue.put_nowait(request.get_json(force=True)) or '', 200
-# === Command Handlers ===
+# @health_app.route("/telegram", methods=["POST"])
+# def telegram_webhook():
+#     """Entry point for Telegram webhook (Render will POST updates here)."""
+#     from app.telegram_bot import app as telegram_app
+#     return telegram_app.update_queue.put_nowait(request.get_json(force=True)) or '', 200
+# # === Command Handlers ===
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command."""
