@@ -33,6 +33,7 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "miniapp"))
 telegram_application = None
+telegram_loop = None
 
 # Flask app for health checks
 health_app = Flask(__name__, static_folder="../static")
@@ -51,23 +52,25 @@ def healthz():
 def serve_miniapp(filename):
     return send_from_directory(STATIC_DIR, filename)
 
-@health_app.route("/")
-def root():
-    """Redirect root to /healthz for easy monitoring."""
-    return redirect("/healthz")
-
 @health_app.route("/telegram", methods=["POST"])
 def telegram_webhook():
     """Webhook endpoint to receive Telegram updates."""
-    global telegram_application
-    if telegram_application is None:
-        return "Telegram application not initialized", 500
+    global telegram_application, telegram_loop
+
+    if telegram_application is None or telegram_loop is None:
+        return "Telegram bot not initialized", 500
 
     try:
         json_data = request.get_json(force=True)
         update = Update.de_json(json_data, telegram_application.bot)
-        asyncio.create_task(telegram_application.process_update(update))
+
+        # Schedule processing on the bot’s loop
+        asyncio.run_coroutine_threadsafe(
+            telegram_application.process_update(update),
+            telegram_loop
+        )
         return '', 200
+
     except Exception as e:
         logging.error("Failed to process Telegram update: %s", e)
         return 'Failed to process update', 500
@@ -225,7 +228,7 @@ def main():
     threading.Thread(target=lambda: health_app.run(host="0.0.0.0", port=port), daemon=True).start()
 
     async def launch():
-        global telegram_application  # <-- this line must be indented
+        global telegram_application, telegram_loop
 
         telegram_application = (
             ApplicationBuilder()
@@ -245,6 +248,10 @@ def main():
 
         await telegram_application.initialize()
         await telegram_application.start()
+
+        # ← Capture the running loop right after start()
+        telegram_loop = asyncio.get_running_loop()
+
         await telegram_application.bot.set_webhook(url=os.getenv("WEBHOOK_URL"))
         print("✅ Webhook set.")
         await asyncio.Event().wait()
