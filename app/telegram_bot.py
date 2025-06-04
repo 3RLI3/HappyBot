@@ -64,10 +64,12 @@ def telegram_webhook():
         return "Telegram application not initialized", 500
 
     try:
-        telegram_application.update_queue.put_nowait(request.get_json(force=True))
+        json_data = request.get_json(force=True)
+        update = Update.de_json(json_data, telegram_application.bot)
+        asyncio.create_task(telegram_application.process_update(update))
         return '', 200
     except Exception as e:
-        logging.error("Failed to enqueue Telegram update: %s", e)
+        logging.error("Failed to process Telegram update: %s", e)
         return 'Failed to process update', 500
         
 # # === Command Handlers ===
