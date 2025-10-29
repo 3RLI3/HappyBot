@@ -1,4 +1,9 @@
-from langchain.prompts import PromptTemplate
+try:
+    # LangChain ≥ 0.2
+    from langchain_core.prompts import PromptTemplate
+except ImportError:
+    # For older LangChain installs (≤ 0.1.x)
+    from langchain.prompts import PromptTemplate  # type: ignore
 
 prompt_templates = {
     "daily_life": PromptTemplate(
