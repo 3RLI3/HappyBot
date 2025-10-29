@@ -9,7 +9,7 @@ HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/js
 
 def generate_response(prompt: str) -> str:
     payload = {
-        "model": "aisingapore/Gemma-SEA-LION-v3-9B-IT",
+        "model": "aisingapore/Gemma-SEA-LION-v4-27B-IT",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
